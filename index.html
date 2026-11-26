@@ -92,6 +92,11 @@ mark.todo{background:var(--todo);color:#2b1a12;padding:1px 4px;border-radius:4px
 .hint.on{opacity:1;transform:none;animation:nudge 1.2s ease-in-out .4s infinite}
 @keyframes nudge{50%{transform:translateY(-4px)}}
 .stage{text-align:center;position:relative}
+.blow{position:absolute;left:0;right:0;margin:0 auto;top:8px;z-index:3;width:min(92%,330px);background:rgba(214,59,47,.94);color:#fff;border-radius:18px;padding:12px 14px 14px;box-shadow:0 4px 0 #a9261f;animation:nudge 1.2s ease-in-out infinite}
+.blow b{display:block;font:400 clamp(26px,8vw,34px)/1.12 Jua,sans-serif}
+.blow span{display:block;font-size:15px;margin-top:4px}
+.blow .meter{background:rgba(255,255,255,.35);margin-top:8px}
+.blow .meter i{background:#fff}
 .loud{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;font:clamp(84px,26vw,130px)/1.02 Jua,sans-serif;color:#d63b2f;background:rgba(255,243,220,.92);border-radius:18px;-webkit-text-stroke:2px #a9261f;transition:opacity .35s;animation:pulse .7s ease-in-out infinite alternate}
 .loud.off{opacity:0;pointer-events:none}
 @keyframes pulse{to{transform:scale(1.06)}}
@@ -385,7 +390,7 @@ const song=(()=>{
     $('sheetBody').querySelector('h2').textContent='생일 축하해, 유림아';
     const host=$('banner').parentNode;$('banner').remove();
     const st=document.createElement('div');st.className='stage';
-    st.innerHTML=`<div class="loud" id="loud">소리<br>키셈</div><canvas id="cv" width="${W}" height="${H}" style="width:100%;max-width:360px;display:block;margin:0 auto;border-radius:18px"></canvas><video id="vid" playsinline autoplay muted style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none"></video><div class="say" id="say">카메라 켜는 중…</div><div class="meter" id="meter" hidden><i id="bar"></i></div><p class="small" id="tip"></p>`;
+    st.innerHTML=`<div class="loud" id="loud">소리<br>키셈</div><div class="blow" id="blow" hidden><b>케이크 촛불 끄게<br>후~ 불어!</b><span id="blowS">폰 아래쪽 마이크에 대고 후~</span><div class="meter"><i id="bar"></i></div></div><canvas id="cv" width="${W}" height="${H}" style="width:min(100%,360px,calc((80svh - 120px)*.75));display:block;margin:0 auto;border-radius:18px"></canvas><video id="vid" playsinline autoplay muted style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none"></video><div class="say" id="say">카메라 켜는 중…</div><p class="small" id="tip"></p>`;
     host.appendChild(st);
     const shown=performance.now();
     cv=$('cv');ctx=cv.getContext('2d');vid=$('vid');t0=performance.now();raf=requestAnimationFrame(draw);
@@ -414,20 +419,20 @@ const song=(()=>{
 
   async function blowTime(){
     if(!live)return;
-    $('say').textContent='케이크 촛불 끄게 후 불어';
+    $('say').textContent='케이크 촛불 끄게 후 불어';$('blow').hidden=false;$('sheetBody').querySelector('.stage').scrollIntoView({block:'start',behavior:'smooth'});
     let power=0;const need=900; /* 0.9초 정도 불면 다 꺼짐 */
     const blowOut=amt=>{if(power>=need)return;power=Math.min(need,power+amt);const k=Math.floor(power/(need/3)+1e-9);
       for(let i=0;i<3;i++)if(i<k&&lit[i]){lit[i]=0;smoke.push({x:CAND[i],t:(performance.now()-t0)/1000})}
       $('bar').style.width=(power/need*100)+'%';if(power>=need)win()};
     /* 마이크가 안 되면 촛불을 톡 치면 꺼짐 */
-    const tapMode=msg=>{$('tip').textContent=msg;cv.onclick=()=>blowOut(need/3+1)};
+    const tapMode=msg=>{$('blowS').textContent=msg;cv.onclick=()=>blowOut(need/3+1)};
     try{
       mic=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
       if(!live)return stop();
       await ac.resume();
       const ms=ac.createMediaStreamSource(mic),an=ac.createAnalyser();an.fftSize=1024;ms.connect(an);if(dest)ms.connect(dest);
       const buf=new Float32Array(an.fftSize);let last=performance.now();
-      $('meter').hidden=false;$('tip').textContent='폰 아래쪽 마이크에 대고 후~';
+      $('blowS').textContent='폰 아래쪽 마이크에 대고 후~';
       const loop=now=>{if(!live||power>=need)return;an.getFloatTimeDomainData(buf);let sum=0;for(const v of buf)sum+=v*v;const rms=Math.sqrt(sum/buf.length);
         const dt=now-last;last=now;if(rms>0.1)blowOut(dt);requestAnimationFrame(loop)};
       requestAnimationFrame(loop);
@@ -436,7 +441,7 @@ const song=(()=>{
   }
 
   function win(){
-    $('meter').hidden=true;$('tip').textContent='';$('say').textContent='후~ 소원 빌었지?';
+    $('blow').hidden=true;$('tip').textContent='';$('say').textContent='후~ 소원 빌었지?';
     later(()=>{done=true;fireworks()},500);
     /* 폭죽 다 터지면 녹화 끝 */
     later(()=>{if(mic){mic.getTracks().forEach(t=>t.stop());mic=null}if(rec&&rec.state!=='inactive')rec.stop()},500+7*380+700+2200);
