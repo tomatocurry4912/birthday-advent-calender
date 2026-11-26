@@ -92,6 +92,10 @@ mark.todo{background:var(--todo);color:#2b1a12;padding:1px 4px;border-radius:4px
 .hint.on{opacity:1;transform:none;animation:nudge 1.2s ease-in-out .4s infinite}
 @keyframes nudge{50%{transform:translateY(-4px)}}
 .stage{text-align:center;position:relative}
+.rec{position:absolute;left:50%;top:10px;transform:translateX(-50%);z-index:2;background:rgba(43,26,18,.75);color:#fff;font:14px/1 Jua,sans-serif;padding:6px 10px 6px 8px;border-radius:99px;display:flex;gap:6px;align-items:center}
+.rec i{width:10px;height:10px;border-radius:50%;background:#ff3b30;animation:blink 1s steps(2,start) infinite}
+@keyframes blink{to{visibility:hidden}}
+.down{animation:nudge 1.2s ease-in-out infinite}
 .cam{position:relative;width:min(64vw,250px);aspect-ratio:1;margin:0 auto;border-radius:50%;overflow:hidden;background:#e9dcc6;box-shadow:0 0 0 6px #fff,0 0 0 10px var(--gold)}
 .cam video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:block}
 .cam .nocam{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#8a6a4a;font-size:14px;padding:20px}
@@ -356,20 +360,20 @@ const song=(()=>{
       const type=['video/mp4','video/webm;codecs=vp9,opus','video/webm'].find(m=>MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(m))||'';
       rec=new MediaRecorder(new MediaStream(tracks),type?{mimeType:type}:undefined);chunks=[];
       rec.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};
-      rec.onstop=saved;rec.start(1000);
+      rec.onstop=saved;rec.start(1000);$('rec').hidden=false;
     }catch(e){rec=null}
   }
   function saved(){
+    const rb=$('rec');if(rb)rb.hidden=true;
     if(!chunks.length)return;
     const type=rec.mimeType||chunks[0].type||'video/mp4',ext=type.includes('mp4')?'mp4':'webm';
     const blob=new Blob(chunks,{type}),url=URL.createObjectURL(blob),name='유림이_생일축하.'+ext;
     const box=document.createElement('div');box.id='recbox';
-    box.innerHTML=`<p class="say" style="font-size:19px">방금 영상 녹화됐어!<br>여울이한테 보내줘</p><button class="btn" id="share">영상 저장하기 / 보내기</button><a class="btn" id="dl" href="${url}" download="${name}" style="display:flex;align-items:center;justify-content:center;text-decoration:none" hidden>영상 다운로드</a><button class="btn" id="watch" style="background:#2f7a52">다시 보기</button><video id="playback" src="${url}" controls playsinline hidden style="width:100%;border-radius:14px;margin-top:10px"></video>`;
+    box.innerHTML=`<p class="say" style="font-size:30px;color:#d63b2f;margin-top:20px">니 방금 녹화됨<br>밑에 내려보셈ㅋㅋㄹㅋ</p><svg width="34" height="40" viewBox="0 0 34 40" style="display:block;margin:6px auto 14px" class="down"><path d="M17 2v32M4 22l13 14 13-14" stroke="#d63b2f" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><video id="playback" src="${url}" controls playsinline style="width:100%;border-radius:14px;background:#000"></video><button class="btn" id="share">영상 저장하기 / 보내기</button><a class="btn" id="dl" href="${url}" download="${name}" style="display:flex;align-items:center;justify-content:center;text-decoration:none" hidden>영상 다운로드</a>`;
     $('sheetBody').querySelector('.stage').appendChild(box);
     const file=new File([blob],name,{type});
     if(navigator.canShare&&navigator.canShare({files:[file]}))$('share').onclick=()=>navigator.share({files:[file],title:'유림이 생일축하'}).catch(()=>{});
     else{$('share').hidden=true;$('dl').hidden=false}
-    $('watch').onclick=()=>{const v=$('playback');v.hidden=false;v.play().catch(()=>{})};
   }
 
   async function play(){
@@ -380,7 +384,7 @@ const song=(()=>{
     $('sheetBody').querySelector('h2').textContent='생일 축하해, 유림아';
     const host=$('hint').parentNode;$('hint').remove();$('banner').remove();
     const st=document.createElement('div');st.className='stage';
-    st.innerHTML=`<canvas id="cv" width="${W}" height="${H}" style="width:100%;max-width:360px;display:block;margin:0 auto;border-radius:18px"></canvas><video id="vid" playsinline autoplay muted style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none"></video><div class="say" id="say">카메라 켜는 중…</div><div class="meter" id="meter" hidden><i id="bar"></i></div><p class="small" id="tip"></p>`;
+    st.innerHTML=`<div class="rec" id="rec" hidden><i></i>REC</div><canvas id="cv" width="${W}" height="${H}" style="width:100%;max-width:360px;display:block;margin:0 auto;border-radius:18px"></canvas><video id="vid" playsinline autoplay muted style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none"></video><div class="say" id="say">카메라 켜는 중…</div><div class="meter" id="meter" hidden><i id="bar"></i></div><p class="small" id="tip"></p>`;
     host.appendChild(st);
     cv=$('cv');ctx=cv.getContext('2d');vid=$('vid');t0=performance.now();raf=requestAnimationFrame(draw);
     try{
