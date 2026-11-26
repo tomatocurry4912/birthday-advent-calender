@@ -92,6 +92,9 @@ mark.todo{background:var(--todo);color:#2b1a12;padding:1px 4px;border-radius:4px
 .hint.on{opacity:1;transform:none;animation:nudge 1.2s ease-in-out .4s infinite}
 @keyframes nudge{50%{transform:translateY(-4px)}}
 .stage{text-align:center;position:relative}
+.loud{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;font:clamp(84px,26vw,130px)/1.02 Jua,sans-serif;color:#d63b2f;background:rgba(255,243,220,.92);border-radius:18px;-webkit-text-stroke:2px #a9261f;transition:opacity .35s;animation:pulse .7s ease-in-out infinite alternate}
+.loud.off{opacity:0;pointer-events:none}
+@keyframes pulse{to{transform:scale(1.06)}}
 .rec{position:absolute;left:50%;top:10px;transform:translateX(-50%);z-index:2;background:rgba(43,26,18,.75);color:#fff;font:14px/1 Jua,sans-serif;padding:6px 10px 6px 8px;border-radius:99px;display:flex;gap:6px;align-items:center}
 .rec i{width:10px;height:10px;border-radius:50%;background:#ff3b30;animation:blink 1s steps(2,start) infinite}
 @keyframes blink{to{visibility:hidden}}
@@ -263,7 +266,7 @@ const imgSlot=label=>`<div class="imgslot"><svg width="40" height="40" viewBox="
 function body(x){
   const ps=a=>(a||[]).map(p=>`<p>${p}</p>`).join('');
   switch(x.t){
-  case 'song':return `<p class="hint" id="hint">소리 키고 배너 클릭하셈</p><button class="banner" id="banner">유림이를 위한<br>생일축하송<small>from ${FROM}</small></button>`;
+  case 'song':return `<button class="banner" id="banner" style="margin-top:24px">유림이를 위한<br>생일축하송<small>from ${FROM}</small></button>`;
   case 'letter':return `<div class="letter">${ps(x.body)}<div class="sign">${SIGN}</div></div>`;
   case 'gift':return `<div class="ticket"><div class="l"><span>${x.shop}</span><b>${x.item}</b><div class="fine">${x.note}</div></div><div class="r">선물</div></div>`+(x.img?`<img class="gimg" src="${x.img}" alt="기프티콘">`:imgSlot('<mark class="todo">기프티콘 이미지 자리</mark><br>바코드 화면을 매장에서 보여주면 돼'))+(x.final?`<div class="letter" style="margin-top:14px"><p><mark class="todo">마지막 편지 한 단락</mark></p><div class="sign">${SIGN}</div></div>`:'');
   case 'coupon':return `<div class="ticket ${x.color==='green'?'green':''}"><div class="l"><span>${FROM} 발행 공식 쿠폰</span><b>${x.item}</b><div class="fine">${x.fine}</div></div><div class="r">1회권</div></div><p style="margin-top:14px">이 화면 캡처해서 쓰고 싶을 때 나한테 보내.</p>`;
@@ -284,7 +287,6 @@ const song=(()=>{
 
   function start(){
     stop();live=true;done=false;lit=[1,1,1];smoke=[];parts=[];rockets=[];selfie=null;
-    later(()=>{const h=$('hint');if(h)h.classList.add('on')},3000);
     $('banner').onclick=play;
   }
 
@@ -382,10 +384,11 @@ const song=(()=>{
     if(SONG_SRC){audio=new Audio(SONG_SRC);audio.playsInline=true;audio.preload='auto';audio.play().then(()=>audio.pause()).catch(()=>{});
       try{const n=ac.createMediaElementSource(audio);n.connect(ac.destination);n.connect(dest)}catch(e){}}
     $('sheetBody').querySelector('h2').textContent='생일 축하해, 유림아';
-    const host=$('hint').parentNode;$('hint').remove();$('banner').remove();
+    const host=$('banner').parentNode;$('banner').remove();
     const st=document.createElement('div');st.className='stage';
-    st.innerHTML=`<div class="rec" id="rec" hidden><i></i>REC</div><canvas id="cv" width="${W}" height="${H}" style="width:100%;max-width:360px;display:block;margin:0 auto;border-radius:18px"></canvas><video id="vid" playsinline autoplay muted style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none"></video><div class="say" id="say">카메라 켜는 중…</div><div class="meter" id="meter" hidden><i id="bar"></i></div><p class="small" id="tip"></p>`;
+    st.innerHTML=`<div class="loud" id="loud">소리<br>키셈</div><div class="rec" id="rec" hidden><i></i>REC</div><canvas id="cv" width="${W}" height="${H}" style="width:100%;max-width:360px;display:block;margin:0 auto;border-radius:18px"></canvas><video id="vid" playsinline autoplay muted style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none"></video><div class="say" id="say">카메라 켜는 중…</div><div class="meter" id="meter" hidden><i id="bar"></i></div><p class="small" id="tip"></p>`;
     host.appendChild(st);
+    const shown=performance.now();
     cv=$('cv');ctx=cv.getContext('2d');vid=$('vid');t0=performance.now();raf=requestAnimationFrame(draw);
     try{
       cam=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:720},height:{ideal:720}},audio:false});
@@ -396,6 +399,10 @@ const song=(()=>{
       $('selfie').onchange=e=>{const f=e.target.files&&e.target.files[0];if(!f)return;selfie=new Image();selfie.src=URL.createObjectURL(f);$('tip').textContent=''};
     }
     if(!live)return;
+    /* "소리키셈"을 최소 1.5초는 보여주고 시작 */
+    const wait=1500-(performance.now()-shown);if(wait>0)await new Promise(r=>later(r,wait));
+    if(!live)return;
+    $('loud').classList.add('off');
     $('say').textContent='노래 듣는 중…';
     /* 노래 시작 = 녹화 시작 */
     startRec();
