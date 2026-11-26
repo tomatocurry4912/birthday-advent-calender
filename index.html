@@ -91,7 +91,7 @@ mark.todo{background:var(--todo);color:#2b1a12;padding:1px 4px;border-radius:4px
 .hint{font-family:Jua,sans-serif;font-size:20px;color:var(--red);text-align:center;margin:0 0 10px;opacity:0;transform:translateY(6px);transition:.4s}
 .hint.on{opacity:1;transform:none;animation:nudge 1.2s ease-in-out .4s infinite}
 @keyframes nudge{50%{transform:translateY(-4px)}}
-.stage{text-align:center}
+.stage{text-align:center;position:relative}
 .cam{position:relative;width:min(64vw,250px);aspect-ratio:1;margin:0 auto;border-radius:50%;overflow:hidden;background:#e9dcc6;box-shadow:0 0 0 6px #fff,0 0 0 10px var(--gold)}
 .cam video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:block}
 .cam .nocam{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#8a6a4a;font-size:14px;padding:20px}
@@ -177,7 +177,7 @@ const YEAR = 2026;
 const FROM = '여울';
 const SIGN = '여울이가';
 /* 12월 2일 생일축하송: 여울이 목소리 파일이 오면 여기에 넣음. 비어 있으면 임시 멜로디가 나와요 */
-const SONG_SRC = '';
+const SONG_SRC = 'song.m4a';
 /* 각 문 내용. d = 12월 며칠. t = 종류(letter 편지, gift 기프티콘, coupon 쿠폰, photo 사진, quiz 퀴즈, fortune 운세, list 체크리스트) */
 const DOORS = [
 {d:2,t:'song',title:'생일 축하해'},
@@ -272,55 +272,132 @@ function body(x){
 
 /* ===== 12월 2일: 생일축하송 ===== */
 const song=(()=>{
+  const W=720,H=960,CX=360,CY=300,R=240;
   let timers=[],cam=null,mic=null,ac=null,audio=null,raf=0,live=false;
+  let cv,ctx,vid,selfie=null,dest=null,rec=null,chunks=[],lit=[1,1,1],smoke=[],parts=[],rockets=[],done=false,t0=0;
   const later=(f,ms)=>timers.push(setTimeout(f,ms));
-  const cakeSvg=`<svg class="cake" viewBox="0 0 200 140" aria-label="케이크">
-<ellipse cx="100" cy="128" rx="92" ry="10" fill="#e4cfae"/>
-<rect x="28" y="84" width="144" height="42" rx="8" fill="#f7c6c7"/>
-<rect x="28" y="84" width="144" height="10" rx="5" fill="#fff6e8"/>
-<path d="M28 92q8 12 16 0q8 12 16 0q8 12 16 0q8 12 16 0q8 12 16 0q8 12 16 0q8 12 16 0q8 12 16 0q8 12 16 0v-6h-144z" fill="#fff6e8"/>
-<rect x="50" y="54" width="100" height="34" rx="7" fill="#fff6e8"/>
-<path d="M50 62q7 10 14 0q7 10 14 0q7 10 14 0q7 10 14 0q7 10 14 0q7 10 14 0q7 10 16 0v-6h-100z" fill="#d63b2f"/>
-<circle cx="70" cy="76" r="3" fill="#d63b2f"/><circle cx="100" cy="78" r="3" fill="#2f7a52"/><circle cx="130" cy="76" r="3" fill="#d63b2f"/>
-<circle cx="48" cy="108" r="3" fill="#2f7a52"/><circle cx="84" cy="110" r="3" fill="#d63b2f"/><circle cx="116" cy="110" r="3" fill="#2f7a52"/><circle cx="152" cy="108" r="3" fill="#d63b2f"/>
-${[72,100,128].map((x,i)=>`<rect x="${x-3}" y="30" width="6" height="26" rx="2" fill="${['#f4bd4f','#7fc4a0','#f08a5d'][i]}"/><path d="M${x-3} 36l6-3M${x-3} 44l6-3M${x-3} 52l6-3" stroke="#fff" stroke-width="1.5"/><path class="flame" data-i="${i}" d="M${x} 12c5 6 7 10 7 13a7 7 0 0 1-14 0c0-3 2-7 7-13z" fill="#ffb53b"/><path class="flame" d="M${x} 18c2 3 3 5 3 7a3 3 0 0 1-6 0c0-2 1-4 3-7z" fill="#fff3c4"/><circle class="smoke" data-i="${i}" cx="${x}" cy="22" r="4" fill="#cfc6b8"/>`).join('')}
-</svg>`;
+  const CAND=[290,360,430],CCOL=['#f4bd4f','#7fc4a0','#f08a5d'];
 
   function start(){
-    stop();live=true;
+    stop();live=true;done=false;lit=[1,1,1];smoke=[];parts=[];rockets=[];selfie=null;
     later(()=>{const h=$('hint');if(h)h.classList.add('on')},3000);
     $('banner').onclick=play;
   }
+
+  /* ---- 그리기 (화면에 보이는 것 = 녹화되는 것) ---- */
+  function rr(x,y,w,h,r,c){ctx.fillStyle=c;ctx.beginPath();ctx.roundRect?ctx.roundRect(x,y,w,h,r):ctx.rect(x,y,w,h);ctx.fill()}
+  function scallop(x0,x1,y,r,c){ctx.fillStyle=c;for(let x=x0+r;x<=x1-r+1;x+=r*2){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI);ctx.fill()}}
+  function dots(list,c){ctx.fillStyle=c;list.forEach(([x,y])=>{ctx.beginPath();ctx.arc(x,y,7,0,7);ctx.fill()})}
+  function draw(now){
+    if(!live)return;
+    const t=(now-t0)/1000;
+    ctx.fillStyle='#fff3dc';ctx.fillRect(0,0,W,H);
+    /* 얼굴 원 */
+    ctx.save();ctx.beginPath();ctx.arc(CX,CY,R,0,7);ctx.closePath();ctx.fillStyle='#e9dcc6';ctx.fill();ctx.clip();
+    const src=(vid&&vid.readyState>=2&&vid.videoWidth)?vid:(selfie&&selfie.complete&&selfie.naturalWidth?selfie:null);
+    if(src){const sw=src.videoWidth||src.naturalWidth,sh=src.videoHeight||src.naturalHeight,s=Math.min(sw,sh);
+      ctx.translate(CX,0);ctx.scale(-1,1);ctx.translate(-CX,0);
+      ctx.drawImage(src,(sw-s)/2,(sh-s)/2,s,s,CX-R,CY-R,R*2,R*2);}
+    else{ctx.fillStyle='#d9bf96';ctx.beginPath();ctx.arc(CX,CY-40,70,0,7);ctx.fill();ctx.beginPath();ctx.ellipse(CX,CY+170,150,110,0,Math.PI,0);ctx.fill()}
+    ctx.restore();
+    ctx.lineWidth=14;ctx.strokeStyle='#fff';ctx.beginPath();ctx.arc(CX,CY,R+7,0,7);ctx.stroke();
+    ctx.lineWidth=10;ctx.strokeStyle='#f4bd4f';ctx.beginPath();ctx.arc(CX,CY+0,R+18,0,7);ctx.stroke();
+    /* 케이크 */
+    ctx.fillStyle='#e4cfae';ctx.beginPath();ctx.ellipse(CX,915,300,26,0,0,7);ctx.fill();
+    rr(140,770,440,140,22,'#f7c6c7');rr(140,770,440,26,13,'#fff6e8');scallop(140,580,792,20,'#fff6e8');
+    rr(220,680,280,100,18,'#fff6e8');rr(220,680,280,22,11,'#d63b2f');scallop(220,500,700,20,'#d63b2f');
+    dots([[280,745],[360,750],[440,745]],'#d63b2f');dots([[190,850],[300,858],[420,858],[530,850]],'#2f7a52');
+    CAND.forEach((x,i)=>{rr(x-10,590,20,92,6,CCOL[i]);ctx.strokeStyle='#fff';ctx.lineWidth=4;for(let y=605;y<675;y+=22){ctx.beginPath();ctx.moveTo(x-10,y+8);ctx.lineTo(x+10,y);ctx.stroke()}
+      if(lit[i]){const f=1+Math.sin(t*18+i*2)*.08,sw=Math.sin(t*11+i)*.08;
+        ctx.save();ctx.translate(x,588);ctx.rotate(sw);ctx.scale(1/f,f);
+        const g=ctx.createRadialGradient(0,-20,2,0,-20,60);g.addColorStop(0,'rgba(255,210,90,.45)');g.addColorStop(1,'rgba(255,210,90,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(0,-20,60,0,7);ctx.fill();
+        ctx.fillStyle='#ffb53b';ctx.beginPath();ctx.moveTo(0,-62);ctx.bezierCurveTo(22,-34,22,-6,0,-2);ctx.bezierCurveTo(-22,-6,-22,-34,0,-62);ctx.fill();
+        ctx.fillStyle='#fff3c4';ctx.beginPath();ctx.moveTo(0,-36);ctx.bezierCurveTo(10,-22,10,-8,0,-6);ctx.bezierCurveTo(-10,-8,-10,-22,0,-36);ctx.fill();ctx.restore()}});
+    smoke=smoke.filter(s=>t-s.t<1.8);smoke.forEach(s=>{const k=(t-s.t)/1.8;ctx.fillStyle=`rgba(190,180,165,${.6*(1-k)})`;ctx.beginPath();ctx.arc(s.x+Math.sin(k*6)*10,575-k*90,12+k*16,0,7);ctx.fill()});
+    /* 폭죽: 아래에서 얼굴 쪽으로 날아가서 터짐 */
+    rockets=rockets.filter(r=>{if(t<r.t)return true;const k=Math.min(1,(t-r.t)/r.d);const x=r.x0+(r.x1-r.x0)*k,y=r.y0+(r.y1-r.y0)*(1-(1-k)*(1-k));
+      ctx.fillStyle=r.c;ctx.beginPath();ctx.arc(x,y,7,0,7);ctx.fill();ctx.fillStyle='rgba(255,220,120,.5)';ctx.beginPath();ctx.arc(x,y+16,5,0,7);ctx.fill();
+      if(k>=1){burst(r.x1,r.y1,r.c,t);return false}return true});
+    parts=parts.filter(p=>{const a=t-p.t;if(a>p.life)return false;const x=p.x+p.vx*a,y=p.y+p.vy*a+260*a*a;
+      ctx.globalAlpha=Math.max(0,1-a/p.life);ctx.fillStyle=p.c;
+      if(p.sq){ctx.save();ctx.translate(x,y);ctx.rotate(a*8+p.vx);ctx.fillRect(-7,-4,14,8);ctx.restore()}else{ctx.beginPath();ctx.arc(x,y,p.r,0,7);ctx.fill()}
+      ctx.globalAlpha=1;return true});
+    if(done){ctx.font='54px Jua, sans-serif';ctx.textAlign='center';ctx.lineWidth=14;ctx.strokeStyle='#fff3dc';ctx.strokeText('생일 축하해 유림아!',CX,586);ctx.fillStyle='#d63b2f';ctx.fillText('생일 축하해 유림아!',CX,586)}
+    raf=requestAnimationFrame(draw);
+  }
+  const FW=['#d63b2f','#f4bd4f','#2f7a52','#f08a5d','#7fc4a0','#ff6fa8','#ffffff'];
+  function burst(x,y,c,t){
+    for(let i=0;i<70;i++){const a=Math.random()*Math.PI*2,v=120+Math.random()*320;parts.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-80,t,life:1+Math.random()*.9,c:Math.random()<.6?c:FW[i%FW.length],r:3+Math.random()*4,sq:Math.random()<.3})}
+    pop();
+  }
+  function fireworks(){
+    const t=(performance.now()-t0)/1000;
+    for(let i=0;i<7;i++){const ang=-Math.PI/2+(Math.random()-.5)*Math.PI*1.3,rad=R*(.7+Math.random()*.5);
+      const fromLeft=i%2===0;rockets.push({t:t+i*.38,x0:fromLeft?40+Math.random()*80:W-40-Math.random()*80,y0:H-20,x1:CX+Math.cos(ang)*rad,y1:CY+Math.sin(ang)*rad,d:.55+Math.random()*.2,c:FW[i%FW.length]})}
+  }
+  /* 폭죽 소리 */
+  function pop(){if(!ac)return;try{const n=ac.sampleRate*.4,b=ac.createBuffer(1,n,ac.sampleRate),d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,3);
+    const s=ac.createBufferSource(),g=ac.createGain(),f=ac.createBiquadFilter();f.type='lowpass';f.frequency.value=1800;g.gain.value=.5;s.buffer=b;s.connect(f).connect(g);g.connect(ac.destination);if(dest)g.connect(dest);s.start()}catch(e){}}
 
   /* 임시 멜로디 (여울이 목소리 오기 전까지) */
   function melody(){
     const N={G4:392,A4:440,B4:493.9,C5:523.3,D5:587.3,E5:659.3,F5:698.5,G5:784};
     const seq=[['G4',.75],['G4',.25],['A4',1],['G4',1],['C5',1],['B4',2],['G4',.75],['G4',.25],['A4',1],['G4',1],['D5',1],['C5',2],['G4',.75],['G4',.25],['G5',1],['E5',1],['C5',1],['B4',1],['A4',2],['F5',.75],['F5',.25],['E5',1],['C5',1],['D5',1],['C5',2.5]];
     const beat=.42;let t=ac.currentTime+.15;
-    seq.forEach(([n,d])=>{const o=ac.createOscillator(),g=ac.createGain();o.type='triangle';o.frequency.value=N[n];g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.25,t+.03);g.gain.exponentialRampToValueAtTime(.001,t+d*beat*.95);o.connect(g).connect(ac.destination);o.start(t);o.stop(t+d*beat);t+=d*beat});
+    seq.forEach(([n,d])=>{const o=ac.createOscillator(),g=ac.createGain();o.type='triangle';o.frequency.value=N[n];g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.25,t+.03);g.gain.exponentialRampToValueAtTime(.001,t+d*beat*.95);o.connect(g);g.connect(ac.destination);if(dest)g.connect(dest);o.start(t);o.stop(t+d*beat);t+=d*beat});
     return (t-ac.currentTime)*1000;
   }
 
+  /* ---- 녹화 ---- */
+  function startRec(){
+    try{
+      if(!cv.captureStream||!window.MediaRecorder)return;
+      const tracks=[...cv.captureStream(30).getVideoTracks(),...(dest?dest.stream.getAudioTracks():[])];
+      const type=['video/mp4','video/webm;codecs=vp9,opus','video/webm'].find(m=>MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(m))||'';
+      rec=new MediaRecorder(new MediaStream(tracks),type?{mimeType:type}:undefined);chunks=[];
+      rec.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};
+      rec.onstop=saved;rec.start(1000);
+    }catch(e){rec=null}
+  }
+  function saved(){
+    if(!chunks.length)return;
+    const type=rec.mimeType||chunks[0].type||'video/mp4',ext=type.includes('mp4')?'mp4':'webm';
+    const blob=new Blob(chunks,{type}),url=URL.createObjectURL(blob),name='유림이_생일축하.'+ext;
+    const box=document.createElement('div');box.id='recbox';
+    box.innerHTML=`<p class="say" style="font-size:19px">방금 영상 녹화됐어!<br>여울이한테 보내줘</p><button class="btn" id="share">영상 저장하기 / 보내기</button><a class="btn" id="dl" href="${url}" download="${name}" style="display:flex;align-items:center;justify-content:center;text-decoration:none" hidden>영상 다운로드</a><button class="btn" id="watch" style="background:#2f7a52">다시 보기</button><video id="playback" src="${url}" controls playsinline hidden style="width:100%;border-radius:14px;margin-top:10px"></video>`;
+    $('sheetBody').querySelector('.stage').appendChild(box);
+    const file=new File([blob],name,{type});
+    if(navigator.canShare&&navigator.canShare({files:[file]}))$('share').onclick=()=>navigator.share({files:[file],title:'유림이 생일축하'}).catch(()=>{});
+    else{$('share').hidden=true;$('dl').hidden=false}
+    $('watch').onclick=()=>{const v=$('playback');v.hidden=false;v.play().catch(()=>{})};
+  }
+
   async function play(){
-    /* 버튼 누른 순간에 소리/카메라를 켜야 아이폰이 허락해줌 */
-    try{ac=new (window.AudioContext||window.webkitAudioContext)();ac.resume()}catch(e){}
-    if(SONG_SRC){audio=new Audio(SONG_SRC);audio.playsInline=true;audio.play().catch(()=>{})}
+    /* 버튼 누른 순간에 소리를 깨워둬야 아이폰이 허락해줌 */
+    try{ac=new (window.AudioContext||window.webkitAudioContext)();ac.resume();dest=ac.createMediaStreamDestination()}catch(e){}
+    if(SONG_SRC){audio=new Audio(SONG_SRC);audio.playsInline=true;audio.preload='auto';audio.play().then(()=>audio.pause()).catch(()=>{});
+      try{const n=ac.createMediaElementSource(audio);n.connect(ac.destination);n.connect(dest)}catch(e){}}
     $('sheetBody').querySelector('h2').textContent='생일 축하해, 유림아';
     const host=$('hint').parentNode;$('hint').remove();$('banner').remove();
     const st=document.createElement('div');st.className='stage';
-    st.innerHTML=`<div class="cam" id="cam"><video id="vid" playsinline autoplay muted></video></div>${cakeSvg}<div class="say" id="say">노래 듣는 중…</div><div class="meter" id="meter" hidden><i id="bar"></i></div><p class="small" id="tip"></p>`;
+    st.innerHTML=`<canvas id="cv" width="${W}" height="${H}" style="width:100%;max-width:360px;display:block;margin:0 auto;border-radius:18px"></canvas><video id="vid" playsinline autoplay muted style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none"></video><div class="say" id="say">카메라 켜는 중…</div><div class="meter" id="meter" hidden><i id="bar"></i></div><p class="small" id="tip"></p>`;
     host.appendChild(st);
+    cv=$('cv');ctx=cv.getContext('2d');vid=$('vid');t0=performance.now();raf=requestAnimationFrame(draw);
     try{
-      cam=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
+      cam=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:720},height:{ideal:720}},audio:false});
       if(!live)return stop();
-      $('vid').srcObject=cam;$('vid').play().catch(()=>{});
+      vid.srcObject=cam;await vid.play().catch(()=>{});
     }catch(e){
-      $('cam').insertAdjacentHTML('beforeend','<div class="nocam"><svg width="70" height="70" viewBox="0 0 70 70"><circle cx="35" cy="26" r="14" fill="#d9bf96"/><path d="M8 66c4-16 16-22 27-22s23 6 27 22z" fill="#d9bf96"/></svg><label class="btn" style="display:flex;align-items:center;justify-content:center;font-size:16px;min-height:44px;padding:0 14px;margin-top:6px">셀카 찍기<input type="file" accept="image/*" capture="user" id="selfie" hidden></label></div>');
-      $('selfie').onchange=e=>{const f=e.target.files&&e.target.files[0];if(!f)return;const im=document.createElement('img');im.src=URL.createObjectURL(f);im.style.cssText='width:100%;height:100%;object-fit:cover';$('cam').innerHTML='';$('cam').appendChild(im)};
+      $('tip').innerHTML='카메라를 못 켰어. <label style="color:#d63b2f;text-decoration:underline;cursor:pointer">셀카 찍어서 넣기<input type="file" accept="image/*" capture="user" id="selfie" hidden></label>';
+      $('selfie').onchange=e=>{const f=e.target.files&&e.target.files[0];if(!f)return;selfie=new Image();selfie.src=URL.createObjectURL(f);$('tip').textContent=''};
     }
+    if(!live)return;
+    $('say').textContent='노래 듣는 중…';
+    /* 노래 시작 = 녹화 시작 */
+    startRec();
     let ms=0;
-    if(audio){ms=await new Promise(r=>{const done=()=>r(-1);audio.addEventListener('ended',done);audio.addEventListener('error',()=>r(12000));later(()=>r(isFinite(audio.duration)?-2:60000),1500)});
-      if(ms===-2){ms=Math.max(0,(audio.duration-audio.currentTime)*1000)} else if(ms===-1){ms=0}}
+    if(audio){audio.currentTime=0;audio.play().catch(()=>{});
+      ms=await new Promise(r=>{audio.addEventListener('ended',()=>r(0));audio.addEventListener('error',()=>r(1000));later(()=>r(isFinite(audio.duration)?Math.max(0,(audio.duration-audio.currentTime)*1000):60000),1500)});}
     else if(ac){ms=melody()} else ms=8000;
     later(blowTime,ms+400);
   }
@@ -329,38 +406,38 @@ ${[72,100,128].map((x,i)=>`<rect x="${x-3}" y="30" width="6" height="26" rx="2" 
     if(!live)return;
     $('say').textContent='케이크 촛불 끄게 후 불어';
     let power=0;const need=900; /* 0.9초 정도 불면 다 꺼짐 */
-    const flames=[...$('sheetBody').querySelectorAll('.flame[data-i]')];
-    const blowOut=amt=>{power=Math.min(need,power+amt);const k=Math.floor(power/(need/3));
-      flames.forEach((f,i)=>{if(i<k&&!f.classList.contains('out')){f.classList.add('out');f.nextElementSibling.classList.add('out');$('sheetBody').querySelector(`.smoke[data-i="${i}"]`).classList.add('on')}});
+    const blowOut=amt=>{if(power>=need)return;power=Math.min(need,power+amt);const k=Math.floor(power/(need/3)+1e-9);
+      for(let i=0;i<3;i++)if(i<k&&lit[i]){lit[i]=0;smoke.push({x:CAND[i],t:(performance.now()-t0)/1000})}
       $('bar').style.width=(power/need*100)+'%';if(power>=need)win()};
     /* 마이크가 안 되면 촛불을 톡 치면 꺼짐 */
-    const tapMode=msg=>{$('tip').textContent=msg;$('sheetBody').querySelector('.cake').onclick=()=>blowOut(need/3+1)};
+    const tapMode=msg=>{$('tip').textContent=msg;cv.onclick=()=>blowOut(need/3+1)};
     try{
       mic=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
       if(!live)return stop();
-      if(!ac)ac=new (window.AudioContext||window.webkitAudioContext)();await ac.resume();
-      const an=ac.createAnalyser();an.fftSize=1024;ac.createMediaStreamSource(mic).connect(an);
+      await ac.resume();
+      const ms=ac.createMediaStreamSource(mic),an=ac.createAnalyser();an.fftSize=1024;ms.connect(an);if(dest)ms.connect(dest);
       const buf=new Float32Array(an.fftSize);let last=performance.now();
       $('meter').hidden=false;$('tip').textContent='폰 아래쪽 마이크에 대고 후~';
-      const loop=now=>{if(!live)return;an.getFloatTimeDomainData(buf);let sum=0;for(const v of buf)sum+=v*v;const rms=Math.sqrt(sum/buf.length);
-        const dt=now-last;last=now;if(rms>0.1)blowOut(dt);if(power<need)raf=requestAnimationFrame(loop)};
-      raf=requestAnimationFrame(loop);
+      const loop=now=>{if(!live||power>=need)return;an.getFloatTimeDomainData(buf);let sum=0;for(const v of buf)sum+=v*v;const rms=Math.sqrt(sum/buf.length);
+        const dt=now-last;last=now;if(rms>0.1)blowOut(dt);requestAnimationFrame(loop)};
+      requestAnimationFrame(loop);
       later(()=>{if(power<need)tapMode('잘 안 꺼지면 촛불을 손가락으로 톡 쳐도 돼')},15000);
     }catch(e){tapMode('마이크를 못 켜서… 촛불을 손가락으로 톡톡 쳐서 꺼줘')}
   }
 
   function win(){
-    cancelAnimationFrame(raf);if(mic){mic.getTracks().forEach(t=>t.stop());mic=null}
-    $('meter').hidden=true;$('tip').textContent='';
-    $('say').innerHTML='후~ 소원 빌었지?<br>생일 축하해 유림아!';
-    toast('촛불 다 껐다!');
+    $('meter').hidden=true;$('tip').textContent='';$('say').textContent='후~ 소원 빌었지?';
+    later(()=>{done=true;fireworks()},500);
+    /* 폭죽 다 터지면 녹화 끝 */
+    later(()=>{if(mic){mic.getTracks().forEach(t=>t.stop());mic=null}if(rec&&rec.state!=='inactive')rec.stop()},500+7*380+700+2200);
   }
 
   function stop(){
     live=false;timers.forEach(clearTimeout);timers=[];cancelAnimationFrame(raf);
+    if(rec&&rec.state!=='inactive'){rec.onstop=null;try{rec.stop()}catch(e){}}rec=null;
     [cam,mic].forEach(s=>s&&s.getTracks().forEach(t=>t.stop()));cam=mic=null;
     if(audio){audio.pause();audio=null}
-    if(ac){try{ac.close()}catch(e){}ac=null}
+    if(ac){try{ac.close()}catch(e){}ac=null}dest=null;
   }
   return{start,stop};
 })();
