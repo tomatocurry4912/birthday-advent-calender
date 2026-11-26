@@ -119,6 +119,20 @@ mark.todo{background:var(--todo);color:#2b1a12;padding:1px 4px;border-radius:4px
 .meter i{display:block;height:100%;width:0;background:var(--red);transition:width .08s}
 .small{font-size:14px;color:#8a6a4a}
 @media(prefers-reduced-motion:reduce){.flame,.hint.on{animation:none}}
+.wheel{position:relative;width:min(84vw,330px,calc(80svh - 300px));aspect-ratio:1;margin:10px auto 4px}
+.rw{width:100%;height:100%;transition:transform 4.2s cubic-bezier(.12,.75,.12,1);cursor:pointer}
+.rw svg{display:block;width:100%;height:100%;filter:drop-shadow(0 5px 0 rgba(120,30,20,.35))}
+.pin{position:absolute;left:50%;top:-8px;margin-left:-16px;width:32px;height:40px;z-index:2;background:#f4bd4f;clip-path:polygon(0 0,100% 0,50% 100%);filter:drop-shadow(0 2px 0 #a9261f)}
+.rch{display:flex;gap:8px;justify-content:center;margin:4px 0 6px}
+.rch i{width:22px;height:22px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;font:normal 12px Jua,sans-serif;color:#fff}
+.rch i.used{background:var(--cream2)}
+.rch i.bonus{background:#2f7a52;width:34px;border-radius:11px}
+.rch i.bonus.used{background:var(--cream2);color:#8a6a4a}
+.rres{text-align:center;min-height:56px;margin-top:8px}
+.rres b{font:400 26px/1.25 Jua,sans-serif;color:var(--red);display:block}
+.rres b.dim{color:#8a6a4a}
+.rres p{margin-top:6px}
+.mbox svg{display:block;margin:0 auto;animation:nudge 1s ease-in-out infinite}
 .prev{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:var(--gold);color:var(--brown);text-align:center;font-size:14px;padding:6px 16px}
 </style>
 
@@ -193,7 +207,7 @@ const SONG_SRC = 'song.m4a';
 /* 각 문 내용. d = 12월 며칠. t = 종류(letter 편지, gift 기프티콘, coupon 쿠폰, photo 사진, quiz 퀴즈, fortune 운세, list 체크리스트) */
 const DOORS = [
 {d:2,t:'song',title:'생일 축하해'},
-{d:3,t:'gift',title:'출근길 수혈',item:'아이스 아메리카노',shop:'메가커피',price:2000,img:null,note:'추워도 아아 마시는 거 알아.'},
+{d:3,t:'roulette',title:'운명의 룰렛'},
 {d:4,t:'quiz',title:'먹보 퀴즈 1',q:'우리가 처음으로 같이 먹은 음식은?',opts:['<mark class="todo">정답 메뉴</mark>','떡볶이','마라탕','기억 안 남 (서운함)'],a:0,right:'정답! 역시 먹은 건 안 잊어버리는 사람.',wrong:'땡. 이건 좀 서운하다.'},
 {d:5,t:'coupon',title:'붕어빵 쿠폰',item:'붕어빵 3마리 사줌',fine:'사용법: 붕어빵 트럭 보이면 나한테 사진 보내기. 팥/슈크림 선택 가능.',color:'red'},
 {d:6,t:'photo',title:'우리 사진 하나',img:null,caption:'이때 기억나?',body:['<mark class="todo">이 사진에 얽힌 이야기 한두 줄</mark>']},
@@ -271,6 +285,7 @@ const imgSlot=label=>`<div class="imgslot"><svg width="40" height="40" viewBox="
 function body(x){
   const ps=a=>(a||[]).map(p=>`<p>${p}</p>`).join('');
   switch(x.t){
+  case 'roulette':return `<p>기회는 딱 3번. 룰렛을 눌러서 돌려!</p><div class="rch" id="rChances"></div><div class="wheel"><div class="pin"></div><div id="rWheel" class="rw"></div></div><div class="rres" id="rResult"></div><button class="btn" id="rBtn">룰렛 돌리기</button><button class="btn" id="rReset" hidden style="background:#8a6a4a">(미리보기용) 룰렛 초기화</button>`;
   case 'song':return `<button class="banner" id="banner" style="margin-top:24px">유림이를 위한<br>생일축하송<small>from ${FROM}</small></button>`;
   case 'letter':return `<div class="letter">${ps(x.body)}<div class="sign">${SIGN}</div></div>`;
   case 'gift':return `<div class="ticket"><div class="l"><span>${x.shop}</span><b>${x.item}</b><div class="fine">${x.note}</div></div><div class="r">선물</div></div>`+(x.img?`<img class="gimg" src="${x.img}" alt="기프티콘">`:imgSlot('<mark class="todo">기프티콘 이미지 자리</mark><br>바코드 화면을 매장에서 보여주면 돼'))+(x.final?`<div class="letter" style="margin-top:14px"><p><mark class="todo">마지막 편지 한 단락</mark></p><div class="sign">${SIGN}</div></div>`:'');
@@ -457,17 +472,79 @@ const song=(()=>{
   return{start,stop};
 })();
 
+/* ===== 12월 3일: 룰렛 ===== */
+/* 칸 비율(%)과 순서(시계방향). 결과는 SCRIPT 순서대로 무조건 나옴 */
+const WHEEL=[
+  {k:'kkwang',label:'꽝',p:20,bg:'#4a2a1a',fg:'#fff3dc'},
+  {k:'bburin',label:'뿌링클',p:30,bg:'#f4bd4f',fg:'#4a2a1a'},
+  {k:'again',label:'한 번 더',p:25,bg:'#2f7a52',fg:'#fff3dc'},
+  {k:'mystery',label:'?',p:5,bg:'#8a3fd1',fg:'#fff'},
+  {k:'olive',label:'올리브영\n3만원',p:20,bg:'#d63b2f',fg:'#fff3dc'}
+];
+const SCRIPT=['kkwang','kkwang','again','mystery']; /* 1,2번째 꽝 → 3번째 한 번 더 → 보너스 판 미스테리 */
+const roulette=(()=>{
+  const KEY='adv-roulette';let st,spinning=false,rot=0,timers=[];
+  const load=()=>{try{return JSON.parse(store.get(KEY))||{n:0}}catch(e){return{n:0}}};
+  const save=()=>store.set(KEY,JSON.stringify(st));
+  const segs=()=>{let a=0;return WHEEL.map(w=>{const s={...w,a0:a,a1:a+w.p*3.6};a=s.a1;return s})};
+  const pt=(r,a)=>{const t=(a-90)*Math.PI/180;return[(r*Math.cos(t)).toFixed(2),(r*Math.sin(t)).toFixed(2)]};
+  function wheelSvg(){
+    return `<svg viewBox="-160 -160 320 320" class="wheelsvg"><circle r="156" fill="#a9261f"/>${segs().map(s=>{
+      const [x0,y0]=pt(148,s.a0),[x1,y1]=pt(148,s.a1),big=(s.a1-s.a0)>180?1:0,mid=(s.a0+s.a1)/2;
+      const lines=s.label.split('\n'),r=s.p<10?122:92,fs=s.p<10?20:(lines.length>1?17:22);
+      return `<path d="M0 0L${x0} ${y0}A148 148 0 ${big} 1 ${x1} ${y1}Z" fill="${s.bg}" stroke="#fff3dc" stroke-width="3"/>
+      <g transform="rotate(${mid}) translate(0 ${-r}) rotate(${mid>90&&mid<270?180:0})"><text text-anchor="middle" font-family="Jua,sans-serif" font-size="${fs}" fill="${s.fg}">${lines.map((l,i)=>`<tspan x="0" dy="${i?fs+2:(lines.length>1?-fs/2+6:7)}">${l}</tspan>`).join('')}</text></g>`}).join('')}
+      ${Array.from({length:24},(_,i)=>{const [x,y]=pt(152,i*15);return `<circle cx="${x}" cy="${y}" r="3" fill="#fff3dc"/>`}).join('')}
+      <circle r="24" fill="#fff3dc" stroke="#a9261f" stroke-width="4"/><text y="7" text-anchor="middle" font-family="Jua,sans-serif" font-size="18" fill="#a9261f">GO</text></svg>`;
+  }
+  const chances=()=>{const used=Math.min(st.n,3),bonus=st.n>=3?1:0;return {left:3-used+(bonus&&st.n<4?1:0),bonusGiven:st.n>=3}};
+  function ui(){
+    const c=chances();
+    $('rChances').innerHTML=[0,1,2].map(i=>`<i class="${i<Math.min(st.n,3)?'used':''}"></i>`).join('')+(c.bonusGiven?`<i class="bonus ${st.n>=4?'used':''}">+1</i>`:'');
+    $('rBtn').hidden=st.n>=4;$('rBtn').disabled=spinning;
+    $('rBtn').textContent=st.n===3?'보너스 판 돌리기':'룰렛 돌리기';
+  }
+  const MSG={kkwang:['꽝ㅋㅋㅋ 아직 2번 남았어','또 꽝ㅋㅋㅋㅋ 마지막 기회다'],again:'한 번 더!! 보너스 기회 생김',mystery:''};
+  function result(k,i){
+    const r=$('rResult');
+    if(k==='kkwang')r.innerHTML=`<b>${MSG.kkwang[i]||'꽝'}</b>`;
+    if(k==='again')r.innerHTML=`<b>${MSG.again}</b>`;
+    if(k==='mystery')r.innerHTML=`<div class="mbox"><svg viewBox="0 0 120 110" width="120"><rect x="14" y="44" width="92" height="60" rx="6" fill="#8a3fd1"/><rect x="8" y="30" width="104" height="20" rx="5" fill="#a865e8"/><rect x="52" y="30" width="16" height="74" fill="#f4bd4f"/><path d="M60 30c-14-22-34-14-26-4 5 6 26 4 26 4zm0 0c14-22 34-14 26-4-5 6-26 4-26 4z" fill="#f4bd4f"/><text x="60" y="86" text-anchor="middle" font-family="Jua,sans-serif" font-size="30" fill="#fff">?</text></svg></div><b>미스테리 박스 당첨!!!</b><p>5% 뚫었다… 뭐가 들었는지는 <mark class="todo">미스테리 박스 내용 정하기</mark></p>`;
+  }
+  function spin(){
+    if(spinning||st.n>=4)return;
+    const k=SCRIPT[st.n],i=st.n,s=segs().find(x=>x.k===k);
+    /* 칸 안쪽 아무 데나, 꽝일 땐 옆 칸 경계 근처에 아슬아슬하게 */
+    const w=s.a1-s.a0,off=k==='kkwang'?(Math.random()<.5?w*.08:w*.92):w*(.3+Math.random()*.4);
+    const target=s.a0+off;const base=rot-(rot%360);rot=base+360*6+((360-target)%360);
+    spinning=true;ui();$('rResult').innerHTML='<b class="dim">두구두구…</b>';
+    $('rWheel').style.transform=`rotate(${rot}deg)`;
+    timers.push(setTimeout(()=>{spinning=false;st.n++;st.last=k;save();result(k,i);ui()},4300));
+  }
+  function start(){
+    st=load();rot=0;spinning=false;
+    $('rWheel').innerHTML=wheelSvg();
+    if(st.n>0){const s=segs().find(x=>x.k===st.last);rot=360-(s.a0+s.a1)/2;$('rWheel').style.transition='none';$('rWheel').style.transform=`rotate(${rot}deg)`;void $('rWheel').offsetWidth;$('rWheel').style.transition='';result(st.last,st.n-1)}
+    $('rBtn').onclick=spin;$('rWheel').onclick=spin;
+    if(preview)$('rReset').hidden=false,$('rReset').onclick=()=>{st={n:0};save();start()};
+    ui();
+  }
+  function stop(){timers.forEach(clearTimeout);timers=[];spinning=false}
+  return{start,stop};
+})();
+
 function openDoor(d){
   const x=DOORS.find(o=>o.d===d);
   $('sheetBody').innerHTML=`<div class="date">12월 ${d}일${x.final?' · 마지막 문':''}</div><h2>${x.title}</h2>${body(x)}`;
   $('sheet').classList.add('on');$('veil').classList.add('on');
   if(!preview&&!opened.has(d)){opened.add(d);store.set('adv-opened',[...opened].join(','));}
   if(x.t==='song')song.start();
+  if(x.t==='roulette')roulette.start();
   if(x.t==='quiz')$('sheetBody').querySelectorAll('.opt').forEach(b=>b.onclick=()=>{const i=+b.dataset.i;b.classList.add(i===x.a?'right':'wrong');$('ans').textContent=i===x.a?x.right:x.wrong});
   if(x.t==='fortune')$('draw').onclick=()=>{$('fort').textContent=x.list[Math.floor(Math.random()*x.list.length)]};
   if(x.t==='list'){const k='adv-list-'+d,saved=(store.get(k)||'').split(',');$('sheetBody').querySelectorAll('input').forEach(c=>{c.checked=saved.includes(c.dataset.i);c.onchange=()=>store.set(k,[...$('sheetBody').querySelectorAll('input:checked')].map(e=>e.dataset.i).join(','))})}
 }
-function closeSheet(){song.stop();$('sheet').classList.remove('on');$('veil').classList.remove('on');render()}
+function closeSheet(){song.stop();roulette.stop();$('sheet').classList.remove('on');$('veil').classList.remove('on');render()}
 $('x').onclick=closeSheet;$('veil').onclick=closeSheet;
 
 $('box').addEventListener('click',e=>{
