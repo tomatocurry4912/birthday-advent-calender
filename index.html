@@ -362,11 +362,10 @@ const song=(()=>{
       const type=['video/mp4','video/webm;codecs=vp9,opus','video/webm'].find(m=>MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(m))||'';
       rec=new MediaRecorder(new MediaStream(tracks),type?{mimeType:type}:undefined);chunks=[];
       rec.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};
-      rec.onstop=saved;rec.start(1000);$('rec').hidden=false;
+      rec.onstop=saved;rec.start(1000);
     }catch(e){rec=null}
   }
   function saved(){
-    const rb=$('rec');if(rb)rb.hidden=true;
     if(!chunks.length)return;
     const type=rec.mimeType||chunks[0].type||'video/mp4',ext=type.includes('mp4')?'mp4':'webm';
     const blob=new Blob(chunks,{type}),url=URL.createObjectURL(blob),name='유림이_생일축하.'+ext;
@@ -386,7 +385,7 @@ const song=(()=>{
     $('sheetBody').querySelector('h2').textContent='생일 축하해, 유림아';
     const host=$('banner').parentNode;$('banner').remove();
     const st=document.createElement('div');st.className='stage';
-    st.innerHTML=`<div class="loud" id="loud">소리<br>키셈</div><div class="rec" id="rec" hidden><i></i>REC</div><canvas id="cv" width="${W}" height="${H}" style="width:100%;max-width:360px;display:block;margin:0 auto;border-radius:18px"></canvas><video id="vid" playsinline autoplay muted style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none"></video><div class="say" id="say">카메라 켜는 중…</div><div class="meter" id="meter" hidden><i id="bar"></i></div><p class="small" id="tip"></p>`;
+    st.innerHTML=`<div class="loud" id="loud">소리<br>키셈</div><canvas id="cv" width="${W}" height="${H}" style="width:100%;max-width:360px;display:block;margin:0 auto;border-radius:18px"></canvas><video id="vid" playsinline autoplay muted style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none"></video><div class="say" id="say">카메라 켜는 중…</div><div class="meter" id="meter" hidden><i id="bar"></i></div><p class="small" id="tip"></p>`;
     host.appendChild(st);
     const shown=performance.now();
     cv=$('cv');ctx=cv.getContext('2d');vid=$('vid');t0=performance.now();raf=requestAnimationFrame(draw);
