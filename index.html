@@ -141,13 +141,26 @@ mark.todo{background:var(--todo);color:#2b1a12;padding:1px 4px;border-radius:4px
 .bxbtn.open .bx{animation:none}
 @keyframes wob{0%,100%{transform:rotate(0)}25%{transform:rotate(-4deg)}75%{transform:rotate(4deg)}}
 @keyframes appear{from{transform:scale(.3);opacity:0}to{transform:none;opacity:1}}
-.bxline{font:400 22px Jua,sans-serif;color:#2b1a12;margin-top:6px!important}
+.sheet .bxline{font:400 22px Jua,sans-serif;color:#2b1a12;margin-top:6px!important}
 .keyw{margin:10px auto 4px;width:max-content;animation:appear .6s cubic-bezier(.3,1.6,.5,1)}
 .keyw svg{display:block;filter:drop-shadow(0 4px 0 rgba(150,90,10,.35));animation:wob 1.6s ease-in-out infinite}
 .clover{width:min(60vw,220px);aspect-ratio:1;margin:4px auto 10px;animation:appear .6s cubic-bezier(.3,1.6,.5,1)}
 .clover img{width:100%;height:100%;object-fit:contain}
 .cslot{width:100%;height:100%;border:3px dashed #8fc49f;border-radius:50%;background:#e8f5ec;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#2f7a52;font-size:15px;text-align:center;padding:16px}
 @media(prefers-reduced-motion:reduce){.bxbtn .bx,.clover,.bxbtn.appear{animation:none}}
+.aprog{height:8px;border-radius:4px;background:var(--cream2);overflow:hidden;margin:4px 0 14px}
+.aprog i{display:block;height:100%;background:var(--red);transition:width .3s}
+.sheet .aq{font:400 22px/1.3 Jua,sans-serif;margin:0 0 6px!important}
+.aload{height:14px;border-radius:7px;background:var(--cream2);overflow:hidden;margin-top:10px}
+.aload i{display:block;height:100%;width:0;background:#ff8fae;transition:width .6s}
+.pigw{text-align:center;animation:appear .6s cubic-bezier(.3,1.6,.5,1)}
+.pig{display:inline-block;animation:wob 1.4s ease-in-out infinite}
+.sheet .ares{font:400 54px/1 Jua,sans-serif;color:#e0567f;text-align:center;margin:4px 0 14px!important}
+.astat{display:grid;gap:8px;margin:0 0 16px}
+.astat div{display:grid;grid-template-columns:7.5em 1fr 2.2em;gap:8px;align-items:center;font-size:15px}
+.astat b{height:12px;border-radius:6px;background:var(--cream2);overflow:hidden}
+.astat b i{display:block;height:100%;background:#ff8fae}
+.astat em{font-style:normal;text-align:right;font-variant-numeric:tabular-nums}
 .prev{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:var(--gold);color:var(--brown);text-align:center;font-size:14px;padding:6px 16px}
 </style>
 
@@ -223,7 +236,7 @@ const SONG_SRC = 'song.m4a';
 const DOORS = [
 {d:2,t:'song',title:'생일 축하해'},
 {d:3,t:'roulette',title:'운명의 룰렛'},
-{d:4,t:'quiz',title:'먹보 퀴즈 1',q:'우리가 처음으로 같이 먹은 음식은?',opts:['<mark class="todo">정답 메뉴</mark>','떡볶이','마라탕','기억 안 남 (서운함)'],a:0,right:'정답! 역시 먹은 건 안 잊어버리는 사람.',wrong:'땡. 이건 좀 서운하다.'},
+{d:4,t:'animal',title:'나와 닮은 동물 찾기'},
 {d:5,t:'coupon',title:'붕어빵 쿠폰',item:'붕어빵 3마리 사줌',fine:'사용법: 붕어빵 트럭 보이면 나한테 사진 보내기. 팥/슈크림 선택 가능.',color:'red'},
 {d:6,t:'photo',title:'우리 사진 하나',img:null,caption:'이때 기억나?',body:['<mark class="todo">이 사진에 얽힌 이야기 한두 줄</mark>']},
 {d:7,t:'fortune',title:'오늘의 먹운세',list:['오늘은 국물 요리가 운을 부른다. 특히 뼈해장국.','점심에 고민되면 무조건 첫 번째로 떠오른 메뉴. 그게 운명.','야식 금지운... 은 아니고 야식 대길.','디저트를 먹으면 좋은 소식이 온다. 안 와도 디저트는 맛있다.','오늘 누가 밥 사준다고 하면 거절하지 말 것. 그게 나일 수도.','편의점 신상을 고르면 대박 아니면 쪽박. 도전해봐.']},
@@ -300,6 +313,7 @@ const imgSlot=label=>`<div class="imgslot"><svg width="40" height="40" viewBox="
 function body(x){
   const ps=a=>(a||[]).map(p=>`<p>${p}</p>`).join('');
   switch(x.t){
+  case 'animal':return `<p>질문 5개에 솔직하게 답하면 너랑 닮은 동물을 알려줌. 과학적임(아마).</p><div id="aBox"></div>`;
   case 'roulette':return `<p>기회는 딱 3번. 룰렛을 눌러서 돌려!</p><div class="rch" id="rChances"></div><div class="wheel"><div class="pin"></div><div id="rWheel" class="rw"></div></div><div class="rres" id="rResult"></div><button class="btn" id="rBtn">룰렛 돌리기</button><button class="btn" id="rReset" hidden style="background:#8a6a4a">(미리보기용) 룰렛 초기화</button>`;
   case 'song':return `<button class="banner" id="banner" style="margin-top:24px">유림이를 위한<br>생일축하송<small>from ${FROM}</small></button>`;
   case 'letter':return `<div class="letter">${ps(x.body)}<div class="sign">${SIGN}</div></div>`;
@@ -563,6 +577,41 @@ const roulette=(()=>{
   return{start,stop};
 })();
 
+/* ===== 12월 4일: 나와 닮은 동물 찾기 (결과는 무조건 돼지) ===== */
+const ANIMAL_Q=[
+  ['주말 아침에 눈 뜨자마자 드는 생각은?',['오늘 뭐 하지','오늘 뭐 먹지','5분만 더 자야지','몇 시지']],
+  ['친구가 "나 오늘 좀 우울해"라고 하면?',['말없이 들어준다','맛있는 거 먹으러 가자고 한다','같이 운다','웃긴 짤을 보낸다']],
+  ['여행 가서 제일 중요한 건?',['풍경','맛집','숙소','사진']],
+  ['스트레스 받을 때 나는?',['운동한다','먹는다','잔다','노래방 간다']],
+  ['냉장고를 열었더니 케이크 한 조각이 있다',['누구 건지 물어본다','이미 입 안에 있다','반만 먹는다','사진 찍고 먹는다']]
+];
+const PIG_TEXT=['먹을 때 세상에서 제일 행복한 표정을 짓는 타입. 그 표정 보는 사람까지 배부르게 만듦.','겉으로는 무심한 척해도 정이 많고, 옆에 있으면 이상하게 따뜻하고 편안함.','돼지는 사실 엄청 똑똑하고 깨끗한 동물이래. 칭찬임. 진짜임.'];
+const animal=(()=>{
+  let step=0,timers=[],tries=0;
+  const pig=`<svg viewBox="0 0 200 170" width="200" class="pig"><ellipse cx="100" cy="160" rx="62" ry="8" fill="#e4cfae"/><path d="M48 46 30 14 70 32Z" fill="#f59ab4"/><path d="M152 46 170 14 130 32Z" fill="#f59ab4"/><circle cx="100" cy="88" r="66" fill="#ffb8cc"/><circle cx="64" cy="104" r="11" fill="#ff8fae" opacity=".5"/><circle cx="136" cy="104" r="11" fill="#ff8fae" opacity=".5"/><circle cx="76" cy="74" r="7" fill="#2b1a12"/><circle cx="124" cy="74" r="7" fill="#2b1a12"/><circle cx="78" cy="72" r="2.4" fill="#fff"/><circle cx="126" cy="72" r="2.4" fill="#fff"/><ellipse cx="100" cy="106" rx="30" ry="21" fill="#ff8fae"/><ellipse cx="90" cy="106" rx="5" ry="8" fill="#c2577a"/><ellipse cx="110" cy="106" rx="5" ry="8" fill="#c2577a"/><path d="M88 134q12 9 24 0" stroke="#c2577a" stroke-width="4" fill="none" stroke-linecap="round"/></svg>`;
+  function q(){
+    const box=$('aBox');const [t,opts]=ANIMAL_Q[step];
+    box.innerHTML=`<div class="aprog"><i style="width:${step/ANIMAL_Q.length*100}%"></i></div><p class="aq">Q${step+1}. ${t}</p>${opts.map((o,i)=>`<button class="opt" data-i="${i}">${o}</button>`).join('')}`;
+    box.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{b.classList.add('right');timers.push(setTimeout(()=>{step++;step<ANIMAL_Q.length?q():analyze()},280))});
+  }
+  function analyze(){
+    const box=$('aBox');const L=['답변 패턴 분석 중…','성격 유형 대조 중…','위장 용량 측정 중…','결과 확인 중…'];
+    box.innerHTML=`<div class="aprog"><i style="width:100%"></i></div><p class="aq" id="aMsg">${L[0]}</p><div class="aload"><i id="aBar"></i></div>`;
+    L.forEach((m,i)=>timers.push(setTimeout(()=>{const e=$('aMsg');if(e)e.textContent=m;const b=$('aBar');if(b)b.style.width=((i+1)/L.length*100)+'%'},i*700)));
+    timers.push(setTimeout(result,L.length*700+300));
+  }
+  function result(){
+    tries++;
+    $('aBox').innerHTML=`<p class="aq" style="text-align:center">${tries>1?'다시 해봐도…':'나와 닮은 동물은…'}</p><div class="pigw">${pig}</div><p class="ares">${tries>1?'역시 돼지':'돼지'}</p>
+    <div class="astat">${[['식욕',100],['귀여움',100],['먹을 때 행복도',100],['다이어트 의지',3]].map(([k,v])=>`<div><span>${k}</span><b><i style="width:${v}%"></i></b><em>${v}</em></div>`).join('')}</div>
+    ${PIG_TEXT.map(t=>`<p>${t}</p>`).join('')}<p class="jua" style="font-size:20px;color:#d63b2f">여울이랑 궁합: 100% (밥친구 최상)</p><button class="btn" id="aRe">다시 해보기</button>`;
+    $('aRe').onclick=()=>{step=0;q()};
+  }
+  function start(){stop();step=0;tries=0;q()}
+  function stop(){timers.forEach(clearTimeout);timers=[]}
+  return{start,stop};
+})();
+
 function openDoor(d){
   const x=DOORS.find(o=>o.d===d);
   $('sheetBody').innerHTML=`<div class="date">12월 ${d}일${x.final?' · 마지막 문':''}</div><h2>${x.title}</h2>${body(x)}`;
@@ -570,11 +619,12 @@ function openDoor(d){
   if(!preview&&!opened.has(d)){opened.add(d);store.set('adv-opened',[...opened].join(','));}
   if(x.t==='song')song.start();
   if(x.t==='roulette')roulette.start();
+  if(x.t==='animal')animal.start();
   if(x.t==='quiz')$('sheetBody').querySelectorAll('.opt').forEach(b=>b.onclick=()=>{const i=+b.dataset.i;b.classList.add(i===x.a?'right':'wrong');$('ans').textContent=i===x.a?x.right:x.wrong});
   if(x.t==='fortune')$('draw').onclick=()=>{$('fort').textContent=x.list[Math.floor(Math.random()*x.list.length)]};
   if(x.t==='list'){const k='adv-list-'+d,saved=(store.get(k)||'').split(',');$('sheetBody').querySelectorAll('input').forEach(c=>{c.checked=saved.includes(c.dataset.i);c.onchange=()=>store.set(k,[...$('sheetBody').querySelectorAll('input:checked')].map(e=>e.dataset.i).join(','))})}
 }
-function closeSheet(){song.stop();roulette.stop();$('sheet').classList.remove('on');$('veil').classList.remove('on');render()}
+function closeSheet(){song.stop();roulette.stop();animal.stop();$('sheet').classList.remove('on');$('veil').classList.remove('on');render()}
 $('x').onclick=closeSheet;$('veil').onclick=closeSheet;
 
 $('box').addEventListener('click',e=>{
