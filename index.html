@@ -187,10 +187,27 @@ mark.todo{background:var(--todo);color:#2b1a12;padding:1px 4px;border-radius:4px
 .flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:40}
 .flash.on{animation:flashf .9s ease-out}
 @keyframes flashf{0%{opacity:0}12%{opacity:1}30%{opacity:.4}45%{opacity:.95}100%{opacity:0}}
+.fstage{position:relative;margin:4px 0 10px}
+.fstage .fscene{margin:0}
 .sheet .fmsg{font:400 20px/1.4 Jua,sans-serif;text-align:center;margin:4px 0 6px}
-.ftalk{position:relative;background:#fff;border:3px solid #55b878;border-radius:18px;padding:14px 16px;margin:2px 0 14px;cursor:pointer}
-.ftalk::before{content:"";position:absolute;left:50%;top:-14px;margin-left:-10px;border:10px solid transparent;border-bottom-color:#55b878;border-top:0}
-.sheet .ftalk p{margin:0;font-size:17px;line-height:1.7;color:#24402f;min-height:3em}
+.fstage.over .fmsg{position:absolute;left:10px;right:10px;bottom:10px;margin:0;background:rgba(255,255,255,.95);border:3px solid #3d2a1e;border-radius:14px;padding:10px 12px 12px;font-size:18px;color:#2b1a12;box-shadow:0 4px 0 rgba(0,0,0,.18)}
+.fstage.over .fmsg.warn{color:#d63b2f;border-color:#d63b2f}
+.fstage.over .fmsg::after{content:"▼";position:absolute;right:10px;bottom:4px;font-size:10px;color:#a08a76;animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+.ftalk{position:absolute;left:10px;right:10px;bottom:10px;background:#fff;border:3px solid #2f7a52;border-radius:16px;padding:12px 14px 12px;cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,.18)}
+.ftalk::before{content:"";position:absolute;left:61%;top:-24px;border:12px solid transparent;border-bottom:14px solid #2f7a52;border-top:0;border-left-width:6px;border-right-width:12px}
+.ftalk::after{content:"";position:absolute;left:calc(61% + 3px);top:-17px;border:9px solid transparent;border-bottom:12px solid #fff;border-top:0;border-left-width:4px;border-right-width:9px}
+.ftalk b{position:absolute;top:-13px;left:12px;background:#2f7a52;color:#fff;font:400 13px/1 Jua,sans-serif;padding:5px 10px;border-radius:999px}
+.sheet .ftalk p{margin:4px 0 0;font-size:15px;line-height:1.6;color:#24402f;min-height:3em}
+.farmsvg.dragging{touch-action:none}
+.farmsvg .tool{cursor:grab;touch-action:none}
+.farmsvg .tool .tbob{animation:tbob 1.2s ease-in-out infinite}
+.farmsvg .tool.held .tbob{animation:none;transform:scale(1.12)}
+@keyframes tbob{50%{transform:translateY(-6px)}}
+.farmsvg .tgt{transition:opacity .3s;animation:tgtp 1.2s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 50%}
+@keyframes tgtp{50%{transform:scale(1.1)}}
+.farmsvg .cbody{transform-box:fill-box;transform-origin:70% 50%;transition:transform .25s}
+.farmsvg .cbody.tilt{transform:rotate(-30deg)}
 .prev{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:var(--gold);color:var(--brown);text-align:center;font-size:14px;padding:6px 16px}
 </style>
 
@@ -343,7 +360,7 @@ const imgSlot=label=>`<div class="imgslot"><svg width="40" height="40" viewBox="
 function body(x){
   const ps=a=>(a||[]).map(p=>`<p>${p}</p>`).join('');
   switch(x.t){
-  case 'farm':return `<div id="fScene" class="fscene"></div><div id="fCam" class="fcam" hidden><video id="fVid" playsinline autoplay muted></video><i></i></div><div class="ftalk" id="fTalk" hidden><p></p></div><p class="fmsg" id="fMsg"></p><button class="btn" id="fBtn" hidden></button><button class="btn" id="fReset" hidden style="background:#8a6a4a">(미리보기용) 농장 초기화</button>`;
+  case 'farm':return `<div class="fstage" id="fStage"><div id="fScene" class="fscene"></div><div id="fCam" class="fcam" hidden><video id="fVid" playsinline autoplay muted></video><i></i></div><div class="fmsg" id="fMsg"></div><div class="ftalk" id="fTalk" hidden><b>여울 세잎클로버</b><p></p></div></div><button class="btn" id="fBtn" hidden></button><button class="btn" id="fReset" hidden style="background:#8a6a4a">(미리보기용) 농장 초기화</button>`;
   case 'animal':return `<p>질문 5개에 솔직하게 답하면 너랑 닮은 동물을 알려줌. 과학적임(아마).</p><div id="aBox"></div>`;
   case 'roulette':return `<p>기회는 딱 3번. 룰렛을 눌러서 돌려!</p><div class="rch" id="rChances"></div><div class="wheel"><div class="pin"></div><div id="rWheel" class="rw"></div></div><div class="rres" id="rResult"></div><button class="btn" id="rBtn">룰렛 돌리기</button><button class="btn" id="rReset" hidden style="background:#8a6a4a">(미리보기용) 룰렛 초기화</button>`;
   case 'song':return `<button class="banner" id="banner" style="margin-top:24px">유림이를 위한<br>생일축하송<small>from ${FROM}</small></button>`;
@@ -668,9 +685,9 @@ const farm=(()=>{
   function scene(){
     let s=7;const r=()=>(s=s*16807%2147483647)/2147483647;
     const bg=Array.from({length:22},()=>{const x=150+r()*205,y=222+r()*66;return leaf4(x.toFixed(0),y.toFixed(0),(.45+r()*.3).toFixed(2),r()<.5?'#4fa877':'#3d9466')}).join('');
-    return `<svg viewBox="0 0 360 300" class="farmsvg"><defs><linearGradient id="fsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#bfe6ff"/><stop offset="1" stop-color="#eef9ff"/></linearGradient></defs>
-    <rect width="360" height="300" fill="url(#fsky)"/><circle cx="318" cy="40" r="22" fill="#ffd86b"/>
-    <path d="M0 150q90-40 180 0t180 0V300H0Z" fill="#9fd8a6"/><path d="M0 200q90-24 180 0t180 0V300H0Z" fill="#7cc488"/>
+    return `<svg viewBox="0 0 360 400" class="farmsvg"><defs><linearGradient id="fsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#bfe6ff"/><stop offset="1" stop-color="#eef9ff"/></linearGradient></defs>
+    <rect width="360" height="400" fill="url(#fsky)"/><circle cx="318" cy="40" r="22" fill="#ffd86b"/>
+    <path d="M0 150q90-40 180 0t180 0V400H0Z" fill="#9fd8a6"/><path d="M0 200q90-24 180 0t180 0V400H0Z" fill="#7cc488"/><rect y="290" width="360" height="110" fill="#6cb87a"/>
     <g transform="translate(128 14)"><rect width="164" height="40" rx="8" fill="#a8703f"/><rect x="5" y="5" width="154" height="30" rx="6" fill="#fff3dc"/><text x="82" y="26" text-anchor="middle" font-family="Jua,sans-serif" font-size="14" fill="#2f7a52">하유림의 네잎클로버 농장</text></g>
     ${bg}
     <ellipse cx="${PX}" cy="232" rx="58" ry="15" fill="#7a4a2a"/><ellipse cx="${PX}" cy="228" rx="50" ry="10" fill="#9a6238"/>
@@ -678,15 +695,14 @@ const farm=(()=>{
     <g id="fS1" class="grow" opacity="0"><path d="M${PX} 228v-18" stroke="#3d9466" stroke-width="4"/><path d="M${PX} 212c-10-2-14-10-10-14 6 0 10 6 10 14zm0 0c10-2 14-10 10-14-6 0-10 6-10 14z" fill="#55b878"/></g>
     <g id="fClv" class="grow" opacity="0">${clover3()}</g>
     ${farmer()}
-    <g id="fCan" opacity="0" class="can"><path d="M${PX+50} 150h40v30a8 8 0 0 1-8 8h-24a8 8 0 0 1-8-8z" fill="#3a6fd8"/><path d="M${PX+50} 158l-26-14" stroke="#3a6fd8" stroke-width="7" stroke-linecap="round"/><path d="M${PX+90} 156q14 2 10 20" stroke="#3a6fd8" stroke-width="5" fill="none"/></g>
-    <g id="fDrops"></g>
-    <rect id="fDark" width="360" height="300" fill="#1c2a3a" opacity="0" class="grow"/>
-    <g id="fRain" opacity="0" class="grow">${Array.from({length:44},()=>`<path class="rain" d="M${(r()*380).toFixed(0)} ${(-r()*300).toFixed(0)}l-8 22" stroke="#bcd8ff" stroke-width="2.4" stroke-linecap="round" style="animation-delay:-${(r()*.7).toFixed(2)}s"/>`).join('')}</g>
+    <circle id="fTgt" cx="${PX}" cy="222" r="46" fill="none" stroke="#fff" stroke-width="3" stroke-dasharray="8 7" opacity="0" class="tgt"/><g id="fDrops"></g>
+    <rect id="fDark" width="360" height="400" fill="#1c2a3a" opacity="0" class="grow"/>
+    <g id="fRain" opacity="0" class="grow">${Array.from({length:44},()=>`<path class="rain" d="M${(r()*380).toFixed(0)} ${(-r()*420).toFixed(0)}l-8 22" stroke="#bcd8ff" stroke-width="2.4" stroke-linecap="round" style="animation-delay:-${(r()*.7).toFixed(2)}s"/>`).join('')}</g>
     <g id="fUmb" opacity="0" class="grow umb"><path d="M${PX} 160v62q0 8-8 8" stroke="#4a2a1a" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M${PX-56} 164q56-64 112 0q-14-10-28 0q-14-10-28 0q-14-10-28 0q-14-10-28 0z" fill="#d63b2f"/><path d="M${PX} 110q-22 20-28 54M${PX} 110q22 20 28 54" stroke="#a9261f" stroke-width="2" fill="none"/></g>
-    </svg>`;
+    <g id="fTool" class="tool" style="display:none"></g></svg>`;
   }
   const show=(id,on=1)=>{const e=$(id);if(e)e.setAttribute('opacity',on)};
-  function set(text,btn,fn,cls){const m=$('fMsg');m.innerHTML=text;m.className='fmsg'+(cls?' '+cls:'');const b=$('fBtn');b.hidden=!btn;if(btn){b.textContent=btn;b.onclick=()=>{b.onclick=null;fn()}}}
+  function set(text,btn,fn,cls){$('fStage').classList.toggle('over',!$('fScene').hidden);const m=$('fMsg');m.hidden=!text;m.innerHTML=text||'';m.className='fmsg'+(cls?' '+cls:'');const b=$('fBtn');b.hidden=!btn;if(btn){b.textContent=btn;b.onclick=()=>{b.onclick=null;fn()}}}
   /* 진동: 지원하면 진짜 진동, 아이폰(iOS 18+)은 짧은 '틱' 햅틱, 그 외엔 화면 흔들림+번쩍만 */
   function buzz(){
     try{if(navigator.vibrate&&navigator.vibrate([250,80,250,80,400]))return}catch(e){}
@@ -711,14 +727,44 @@ const farm=(()=>{
     $('fCam').hidden=true;$('fScene').hidden=false;$('fScene').innerHTML=scene();$('fFarmer').classList.add('popin');
     set('당신은 <b style="color:#2f7a52">네잎클로버 농장의 농부</b>입니다.','다음',plant);
   }
+  /* ---- 드래그 도구: 손가락으로 끌어서 밭에 놓기 ---- */
+  const TOOLS={
+    seed:`<path d="M-18-12h36l5 30q0 9-9 9h-28q-9 0-9-9z" fill="#c9965a" stroke="#7a4a2a" stroke-width="2.5"/><path d="M-18-12q18-12 36 0" fill="#e0b47a" stroke="#7a4a2a" stroke-width="2.5"/><path d="M-6-20q6-10 12 0" stroke="#7a4a2a" stroke-width="3" fill="none"/><text y="14" text-anchor="middle" font-family="Jua,sans-serif" font-size="13" fill="#4a2a12">씨앗</text>`,
+    can:`<g class="cbody"><path d="M-20-14h40v28a8 8 0 0 1-8 8h-24a8 8 0 0 1-8-8z" fill="#3a6fd8" stroke="#244a99" stroke-width="2"/><path d="M-18-4l-26-16" stroke="#3a6fd8" stroke-width="8" stroke-linecap="round"/><ellipse cx="-46" cy="-21" rx="5" ry="7" fill="#244a99" transform="rotate(-30 -46 -21)"/><path d="M20-8q16 2 11 22" stroke="#244a99" stroke-width="5" fill="none"/></g>`,
+    umb:`<path d="M0-18v40q0 7-7 7" stroke="#4a2a1a" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M-38-14q38-44 76 0q-9-7-19 0q-9-7-19 0q-10-7-19 0q-9-7-19 0z" fill="#d63b2f" stroke="#a9261f" stroke-width="2"/>`
+  };
+  const HOME={x:312,y:196};
+  function tool(kind,tgt,onOver,onDrop){
+    const svg=$('fScene').querySelector('svg'),g=$('fTool');
+    g.innerHTML=`<circle r="48" fill="#fff" opacity=".001"/><g class="tbob">${TOOLS[kind]}</g>`;g.style.display='';
+    svg.classList.add('dragging');show('fTgt',.9);
+    let pos={...HOME},grab=null,done=false;
+    const place=(anim)=>{g.style.transition=anim?'transform .3s ease-out':'none';g.style.transform=`translate(${pos.x}px,${pos.y}px)`};place();
+    const pt=e=>{const p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;return p.matrixTransform(svg.getScreenCTM().inverse())};
+    const near=()=>Math.hypot(pos.x-tgt.x,pos.y-tgt.y)<70;
+    const end=()=>{done=true;grab=null;g.onpointerdown=g.onpointermove=g.onpointerup=g.onpointercancel=null;g.classList.remove('held');svg.classList.remove('dragging');show('fTgt',0);onDrop(pos)};
+    g.onpointerdown=e=>{if(done)return;e.preventDefault();try{g.setPointerCapture(e.pointerId)}catch(_){}const p=pt(e);grab={x:p.x-pos.x,y:p.y-pos.y};g.classList.add('held')};
+    g.onpointermove=e=>{if(!grab||done)return;e.preventDefault();const p=pt(e);pos={x:Math.max(20,Math.min(340,p.x-grab.x)),y:Math.max(20,Math.min(300,p.y-grab.y))};place();onOver&&onOver(near(),pos)};
+    g.onpointerup=g.onpointercancel=()=>{if(!grab||done)return;grab=null;g.classList.remove('held');if(near())end();else{onOver&&onOver(false,pos);pos={...HOME};place(1)}};
+    return {end:()=>{if(!done)end()},hide:()=>{g.style.display='none'}};
+  }
   /* ---- 2. 씨앗 → 물 → 폭우 → 우산 ---- */
-  function plant(){set('네잎클로버 씨앗을 심어야 합니다.<br>씨앗을 심어주세요.','씨앗 심기',()=>{show('fSeed');$('fSeed').classList.add('drop');later(waterStep,800)})}
-  function waterStep(){show('fCan');set('물을 주세요.','물 주기',()=>{
-    $('fDrops').innerHTML=[0,1,2,3].map(i=>`<circle class="drop" cx="${PX+22-i*6}" cy="${150+i*4}" r="3.5" fill="#6fb6ff" style="animation-delay:${i*.08}s"/>`).join('');
-    $('fCan').classList.add('pour');later(()=>{show('fSeed',0);show('fS1');show('fCan',0)},700);later(storm,1900)})}
+  function plant(){set('네잎클로버 씨앗을 심어야 합니다.<br>씨앗을 끌어다 밭에 심어주세요.',null);
+    const t=tool('seed',{x:PX,y:212},null,()=>{t.hide();show('fSeed');$('fSeed').classList.add('drop');later(waterStep,900)})}
+  function waterStep(){set('물을 주세요.<br>물뿌리개를 밭 위로 끌어다 대주세요.',null);
+    let poured=0,iv=0,last=0,cur={x:0,y:0};
+    const pour=on=>{const c=$('fTool').querySelector('.cbody');if(c)c.classList.toggle('tilt',on);
+      if(on&&!iv){last=Date.now();iv=setInterval(()=>{const now=Date.now();poured+=now-last;last=now;
+        const d=document.createElementNS('http://www.w3.org/2000/svg','circle');d.setAttribute('cx',cur.x-44+Math.random()*10);d.setAttribute('cy',cur.y-4);d.setAttribute('r',3.5);d.setAttribute('fill','#6fb6ff');d.setAttribute('class','drop');$('fDrops').appendChild(d);setTimeout(()=>d.remove(),650);
+        if(poured>1400)t.end()},90)}
+      if(!on&&iv){clearInterval(iv);iv=0}};
+    timers.push({clear:()=>clearInterval(iv)});
+    const t=tool('can',{x:PX+40,y:168},(on,p)=>{cur=p;pour(on)},p=>{cur=p;pour(true);
+      const fin=()=>{if(poured<=1400)return later(fin,100);pour(false);t.hide();show('fSeed',0);show('fS1');later(storm,1200)};fin()})}
   function storm(){
     show('fDark',.55);show('fRain');$('fS1').classList.add('droop');
-    set('갑자기 폭우가 쏟아집니다!<br>당신의 네잎클로버를 보호하세요!<br>보호하지 않으면 죽어버립니다!','우산 씌우기',umbrella,'warn');
+    set('갑자기 폭우가 쏟아집니다!<br>당신의 네잎클로버를 보호하세요!<br>보호하지 않으면 죽어버립니다!',null,null,'warn');
+    const t=tool('umb',{x:PX,y:180},null,()=>{t.hide();umbrella()});
   }
   function umbrella(){
     show('fUmb');$('fUmb').classList.add('popin');$('fS1').classList.remove('droop');set('휴… 지켰다',null);
@@ -729,19 +775,18 @@ const farm=(()=>{
     later(talk,4300);
   }
   function talk(){
-    const box=$('fTalk');box.hidden=false;const full=CLOVER_LINE.join('\n');let i=0;
+    $('fMsg').hidden=true;const box=$('fTalk');box.hidden=false;const full=CLOVER_LINE.join('\n');let i=0;
     const tick=()=>{if(!$('fTalk'))return;i++;box.querySelector('p').innerHTML=full.slice(0,i).replace(/\n/g,'<br>');if(i<full.length)typing=setTimeout(tick,55);else store.set(KEY,'3')};
     box.onclick=()=>{clearTimeout(typing);i=full.length-1;tick()};tick();
-    box.scrollIntoView({block:'nearest',behavior:'smooth'});
-  }
+      }
   function start(){
     stop();face=store.get(FKEY)||'';const st=+(store.get(KEY)||0);
     $('fScene').innerHTML=scene();$('fScene').hidden=false;$('fCam').hidden=true;$('fTalk').hidden=true;
-    if(st>=2&&face){show('fClv');set('이게 뭐야!<br>세잎클로버가 나와버렸어요!',null,null,'warn');const b=$('fTalk');b.hidden=false;b.querySelector('p').innerHTML=CLOVER_LINE.join('<br>')}
+    if(st>=2&&face){show('fClv');set('',null);const b=$('fTalk');b.hidden=false;b.querySelector('p').innerHTML=CLOVER_LINE.join('<br>')}
     else{face='';$('fScene').innerHTML=scene();set('네잎클로버 농장에 오신 걸 환영합니다.<br>먼저 셀카를 찍어서 농부가 되어보세요!','셀카 찍기',selfie)}
     if(preview){$('fReset').hidden=false;$('fReset').onclick=()=>{store.set(KEY,'0');try{localStorage.removeItem(FKEY)}catch(e){}start()}}
   }
-  function stop(){timers.forEach(clearTimeout);timers=[];clearTimeout(typing);if(cam){cam.getTracks().forEach(t=>t.stop());cam=null}const s=$('sheet');if(s)s.classList.remove('quake')}
+  function stop(){timers.forEach(t=>t&&t.clear?t.clear():clearTimeout(t));timers=[];clearTimeout(typing);if(cam){cam.getTracks().forEach(t=>t.stop());cam=null}const s=$('sheet');if(s)s.classList.remove('quake')}
   return{start,stop};
 })();
 
