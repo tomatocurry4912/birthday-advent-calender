@@ -142,6 +142,8 @@ mark.todo{background:var(--todo);color:#2b1a12;padding:1px 4px;border-radius:4px
 @keyframes wob{0%,100%{transform:rotate(0)}25%{transform:rotate(-4deg)}75%{transform:rotate(4deg)}}
 @keyframes appear{from{transform:scale(.3);opacity:0}to{transform:none;opacity:1}}
 .bxline{font:400 22px Jua,sans-serif;color:#2b1a12;margin-top:6px!important}
+.keyw{margin:10px auto 4px;width:max-content;animation:appear .6s cubic-bezier(.3,1.6,.5,1)}
+.keyw svg{display:block;filter:drop-shadow(0 4px 0 rgba(150,90,10,.35));animation:wob 1.6s ease-in-out infinite}
 .clover{width:min(60vw,220px);aspect-ratio:1;margin:4px auto 10px;animation:appear .6s cubic-bezier(.3,1.6,.5,1)}
 .clover img{width:100%;height:100%;object-fit:contain}
 .cslot{width:100%;height:100%;border:3px dashed #8fc49f;border-radius:50%;background:#e8f5ec;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#2f7a52;font-size:15px;text-align:center;padding:16px}
@@ -497,7 +499,7 @@ const WHEEL=[
 /* 미스테리 박스: BOXES번 열면 선물이 나옴 */
 const BOXES=1;
 const BOX_LINES=['또 박스ㅋㅋ','또…?','아직이야','계속 열어','거의 다 왔…을까?','진짜 거의 다 왔음','마지막…일까?']; /* 박스 열 때마다 나오는 말 */
-const CLOVER_SRC=''; /* 여울이가 만든 하유림 세잎클로버 이미지 파일 이름 (예: 'clover.png'). 비어 있으면 자리 표시 */
+const KEY_TEXT='이 열쇠 어딘가에 쓸 데가 있을 거야. 잘 갖고 있어.'; /* 열쇠 얻었을 때 문구 */
 const SCRIPT=['kkwang','kkwang','again','mystery']; /* 1,2번째 꽝 → 3번째 한 번 더 → 보너스 판 미스테리 */
 const roulette=(()=>{
   const KEY='adv-roulette';let st,spinning=false,rot=0,timers=[];
@@ -532,7 +534,8 @@ const roulette=(()=>{
   const boxSvg=(lv,w)=>{const [c,l]=BCOL[lv%BCOL.length];return `<svg viewBox="0 0 120 110" width="${w}" class="bx"><rect x="14" y="44" width="92" height="60" rx="6" fill="${c}"/><g class="lid"><rect x="8" y="30" width="104" height="20" rx="5" fill="${l}"/><path d="M60 30c-14-22-34-14-26-4 5 6 26 4 26 4zm0 0c14-22 34-14 26-4-5 6-26 4-26 4z" fill="#fff3dc"/></g><rect x="52" y="44" width="16" height="60" fill="#fff3dc"/><text x="60" y="86" text-anchor="middle" font-family="Jua,sans-serif" font-size="28" fill="${lv%BCOL.length===3?'#4a2a1a':'#fff'}">?</text></svg>`};
   function mbox(){
     const m=$('mStage');if(!m)return;const lv=st.box||0;
-    if(lv>=BOXES){m.innerHTML=`<div class="clover">${CLOVER_SRC?`<img src="${CLOVER_SRC}" alt="하유림 세잎클로버">`:'<div class="cslot"><mark class="todo">하유림 세잎클로버 자리</mark><br>(여울이가 만드는 중)</div>'}</div><b>하유림 세잎클로버</b><p>네잎클로버는 행운, 세잎클로버는 행복.<br>행운보다 행복하라고.</p>`;return}
+    if(lv>=BOXES){store.set('adv-key','1'); /* 열쇠 보유 표시: 나중 칸에서 store.get('adv-key')==='1' 로 확인 */
+      m.innerHTML=`<div class="keyw"><svg viewBox="0 0 200 90" width="220"><defs><linearGradient id="kg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe08a"/><stop offset="1" stop-color="#d89a22"/></linearGradient></defs><circle cx="44" cy="45" r="32" fill="url(#kg)"/><circle cx="44" cy="45" r="14" fill="#fff3dc"/><rect x="70" y="37" width="112" height="16" rx="5" fill="url(#kg)"/><rect x="148" y="50" width="12" height="22" rx="3" fill="url(#kg)"/><rect x="168" y="50" width="12" height="16" rx="3" fill="url(#kg)"/><circle cx="34" cy="32" r="5" fill="#fff8d6" opacity=".8"/></svg></div><b>열쇠 획득!</b><p>${KEY_TEXT}</p>`;return}
     const w=Math.round(150-lv*(90/BOXES));
     m.innerHTML=`<button class="bxbtn appear" id="bxBtn" aria-label="박스 열기">${boxSvg(lv,w)}</button><p class="bxline">${lv?BOX_LINES[(lv-1)%BOX_LINES.length]:'눌러서 열기'}</p>`;
     $('bxBtn').onclick=()=>{const b=$('bxBtn');if(b.classList.contains('open'))return;b.classList.add('open');
@@ -553,7 +556,7 @@ const roulette=(()=>{
     $('rWheel').innerHTML=wheelSvg();
     if(st.n>0){const s=segs().find(x=>x.k===st.last);rot=360-(s.a0+s.a1)/2;$('rWheel').style.transition='none';$('rWheel').style.transform=`rotate(${rot}deg)`;void $('rWheel').offsetWidth;$('rWheel').style.transition='';result(st.last,st.n-1)}
     $('rBtn').onclick=spin;$('rWheel').onclick=spin;
-    if(preview)$('rReset').hidden=false,$('rReset').onclick=()=>{st={n:0};save();start()};
+    if(preview)$('rReset').hidden=false,$('rReset').onclick=()=>{st={n:0};save();try{localStorage.removeItem('adv-key')}catch(e){}start()};
     ui();
   }
   function stop(){timers.forEach(clearTimeout);timers=[];spinning=false}
