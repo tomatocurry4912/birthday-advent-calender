@@ -161,6 +161,22 @@ mark.todo{background:var(--todo);color:#2b1a12;padding:1px 4px;border-radius:4px
 .astat b{height:12px;border-radius:6px;background:var(--cream2);overflow:hidden}
 .astat b i{display:block;height:100%;background:#ff8fae}
 .astat em{font-style:normal;text-align:right;font-variant-numeric:tabular-nums}
+.fscene{border-radius:18px;overflow:hidden;margin:4px 0 10px}
+.farmsvg{display:block;width:100%;height:auto}
+.farmsvg .grow{transition:opacity .5s}
+.farmsvg .drop{animation:dropf .6s ease-in forwards}
+@keyframes dropf{from{transform:translateY(0);opacity:1}to{transform:translateY(64px);opacity:0}}
+.farmsvg #fSeed.drop{animation:seedf .6s ease-in}
+@keyframes seedf{from{transform:translateY(-60px)}to{transform:none}}
+.farmsvg .can{transition:opacity .3s;transform-box:fill-box;transform-origin:80% 50%}
+.farmsvg .can.pour{animation:pour .7s ease-in-out}
+@keyframes pour{50%{transform:rotate(-22deg)}}
+.farmsvg #fClv.pop{transform-box:fill-box;transform-origin:50% 100%;animation:sprout .9s cubic-bezier(.3,1.6,.5,1)}
+@keyframes sprout{from{transform:scale(.1)}to{transform:none}}
+.sheet .fmsg{font:400 20px/1.4 Jua,sans-serif;text-align:center;margin:4px 0 6px}
+.ftalk{position:relative;background:#fff;border:3px solid #55b878;border-radius:18px;padding:14px 16px;margin:2px 0 14px;cursor:pointer}
+.ftalk::before{content:"";position:absolute;left:50%;top:-14px;margin-left:-10px;border:10px solid transparent;border-bottom-color:#55b878;border-top:0}
+.sheet .ftalk p{margin:0;font-size:17px;line-height:1.7;color:#24402f;min-height:3em}
 .prev{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:var(--gold);color:var(--brown);text-align:center;font-size:14px;padding:6px 16px}
 </style>
 
@@ -237,7 +253,7 @@ const DOORS = [
 {d:2,t:'song',title:'생일 축하해'},
 {d:3,t:'roulette',title:'운명의 룰렛'},
 {d:4,t:'animal',title:'나와 닮은 동물 찾기'},
-{d:5,t:'coupon',title:'붕어빵 쿠폰',item:'붕어빵 3마리 사줌',fine:'사용법: 붕어빵 트럭 보이면 나한테 사진 보내기. 팥/슈크림 선택 가능.',color:'red'},
+{d:5,t:'farm',title:'네잎클로버 농장'},
 {d:6,t:'photo',title:'우리 사진 하나',img:null,caption:'이때 기억나?',body:['<mark class="todo">이 사진에 얽힌 이야기 한두 줄</mark>']},
 {d:7,t:'fortune',title:'오늘의 먹운세',list:['오늘은 국물 요리가 운을 부른다. 특히 뼈해장국.','점심에 고민되면 무조건 첫 번째로 떠오른 메뉴. 그게 운명.','야식 금지운... 은 아니고 야식 대길.','디저트를 먹으면 좋은 소식이 온다. 안 와도 디저트는 맛있다.','오늘 누가 밥 사준다고 하면 거절하지 말 것. 그게 나일 수도.','편의점 신상을 고르면 대박 아니면 쪽박. 도전해봐.']},
 {d:8,t:'gift',title:'바나나맛 위로',item:'바나나맛 우유',shop:'편의점',price:1700,img:null,note:'노란 거 마시고 기분도 노랗게.'},
@@ -313,6 +329,7 @@ const imgSlot=label=>`<div class="imgslot"><svg width="40" height="40" viewBox="
 function body(x){
   const ps=a=>(a||[]).map(p=>`<p>${p}</p>`).join('');
   switch(x.t){
+  case 'farm':return `<div id="fScene" class="fscene"></div><div class="ftalk" id="fTalk" hidden><p></p></div><p class="fmsg" id="fMsg"></p><button class="btn" id="fBtn" hidden></button><button class="btn" id="fReset" hidden style="background:#8a6a4a">(미리보기용) 농장 초기화</button>`;
   case 'animal':return `<p>질문 5개에 솔직하게 답하면 너랑 닮은 동물을 알려줌. 과학적임(아마).</p><div id="aBox"></div>`;
   case 'roulette':return `<p>기회는 딱 3번. 룰렛을 눌러서 돌려!</p><div class="rch" id="rChances"></div><div class="wheel"><div class="pin"></div><div id="rWheel" class="rw"></div></div><div class="rres" id="rResult"></div><button class="btn" id="rBtn">룰렛 돌리기</button><button class="btn" id="rReset" hidden style="background:#8a6a4a">(미리보기용) 룰렛 초기화</button>`;
   case 'song':return `<button class="banner" id="banner" style="margin-top:24px">유림이를 위한<br>생일축하송<small>from ${FROM}</small></button>`;
@@ -612,6 +629,64 @@ const animal=(()=>{
   return{start,stop};
 })();
 
+/* ===== 12월 5일: 하유림 네잎클로버 농장 ===== */
+const CLOVER3_SRC=''; /* 여울이가 만든 세잎클로버 그림 파일 이름 (예: 'clover3.png'). 비어 있으면 기본 그림 */
+const CLOVER_LINE=['네잎클로버는 행운이지만 세잎클로버는 행복이야 유림아','네잎클로버를 찾으려고 세잎클로버를 짓밟진 말았으면 좋겠다.','행복을 가진 사람이 행운을 마주했을 때 행복할 수 있다는 걸 기억해'];
+const farm=(()=>{
+  const KEY='adv-farm';let st=0,water=0,timers=[],typing=0;
+  const later=(f,ms)=>timers.push(setTimeout(f,ms));
+  const leaf4=(x,y,s,c)=>`<g transform="translate(${x} ${y}) scale(${s})"><path d="M0 18v26" stroke="#2f6b45" stroke-width="3"/>${[0,90,180,270].map(a=>`<path transform="rotate(${a})" d="M0 0C-12-6-14-20-6-22-2-23 0-19 0-16 0-19 2-23 6-22 14-20 12-6 0 0Z" fill="${c}"/>`).join('')}</g>`;
+  const clover3=()=>CLOVER3_SRC?`<image href="${CLOVER3_SRC}" x="125" y="70" width="110" height="140" preserveAspectRatio="xMidYMax meet"/>`:
+    `<g transform="translate(180 132)"><path d="M0 22q-4 36 6 74" stroke="#2f7a52" stroke-width="7" fill="none" stroke-linecap="round"/>
+    ${[-90,30,150].map(a=>`<path transform="rotate(${a+90})" d="M0 0C-26-12-30-44-12-48-4-50 0-42 0-36 0-42 4-50 12-48 30-44 26-12 0 0Z" fill="#55b878" stroke="#2f7a52" stroke-width="3"/>`).join('')}
+    <circle r="22" fill="#7fd09a"/><circle cx="-8" cy="-3" r="3.4" fill="#2b1a12"/><circle cx="8" cy="-3" r="3.4" fill="#2b1a12"/><circle cx="-14" cy="6" r="4" fill="#ff8fae" opacity=".6"/><circle cx="14" cy="6" r="4" fill="#ff8fae" opacity=".6"/><path d="M-6 7q6 6 12 0" stroke="#2b1a12" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+    <rect x="-22" y="32" width="44" height="20" rx="10" fill="#fff3dc" stroke="#2f7a52" stroke-width="2"/><text y="47" text-anchor="middle" font-family="Jua,sans-serif" font-size="14" fill="#2f7a52">여울</text></g>`;
+  function scene(){
+    let s=7;const r=()=>(s=s*16807%2147483647)/2147483647;
+    const bg=Array.from({length:26},()=>{const x=10+r()*340,y=214+r()*70;return leaf4(x.toFixed(0),y.toFixed(0),(.45+r()*.3).toFixed(2),r()<.5?'#4fa877':'#3d9466')}).join('');
+    return `<svg viewBox="0 0 360 300" class="farmsvg"><defs><linearGradient id="fsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#bfe6ff"/><stop offset="1" stop-color="#eef9ff"/></linearGradient></defs>
+    <rect width="360" height="300" fill="url(#fsky)"/><circle cx="310" cy="46" r="24" fill="#ffd86b"/>
+    <path d="M0 150q90-40 180 0t180 0V300H0Z" fill="#9fd8a6"/><path d="M0 200q90-24 180 0t180 0V300H0Z" fill="#7cc488"/>
+    <g transform="translate(28 96)"><rect x="18" y="40" width="7" height="60" fill="#8a5a3a"/><rect x="88" y="40" width="7" height="60" fill="#8a5a3a"/><rect width="114" height="52" rx="8" fill="#a8703f"/><rect x="5" y="5" width="104" height="42" rx="6" fill="#fff3dc"/><text x="57" y="22" text-anchor="middle" font-family="Jua,sans-serif" font-size="12" fill="#a8703f">하유림의</text><text x="57" y="40" text-anchor="middle" font-family="Jua,sans-serif" font-size="14" fill="#2f7a52">네잎클로버 농장</text></g>
+    ${bg}
+    <ellipse cx="180" cy="232" rx="62" ry="16" fill="#7a4a2a"/><ellipse cx="180" cy="228" rx="54" ry="11" fill="#9a6238"/>
+    <g id="fSeed" opacity="0"><ellipse cx="180" cy="226" rx="6" ry="4" fill="#5a3418"/></g>
+    <g id="fS1" class="grow" opacity="0"><path d="M180 228v-16" stroke="#3d9466" stroke-width="4"/><path d="M180 214c-10-2-14-10-10-14 6 0 10 6 10 14zm0 0c10-2 14-10 10-14-6 0-10 6-10 14z" fill="#55b878"/></g>
+    <g id="fS2" class="grow" opacity="0"><path d="M180 228v-44" stroke="#3d9466" stroke-width="5"/><path d="M180 196c-16-2-22-16-14-22 10 0 14 10 14 22zm0 0c16-2 22-16 14-22-10 0-14 10-14 22z" fill="#55b878"/><circle cx="180" cy="182" r="9" fill="#7fd09a"/></g>
+    <g id="fClv" class="grow" opacity="0">${clover3()}</g>
+    <g id="fCan" opacity="0" class="can"><path d="M232 150h46v34a8 8 0 0 1-8 8h-30a8 8 0 0 1-8-8z" fill="#3a6fd8"/><path d="M232 160l-28-16" stroke="#3a6fd8" stroke-width="8" stroke-linecap="round"/><path d="M278 158q16 2 12 22" stroke="#3a6fd8" stroke-width="6" fill="none"/></g>
+    <g id="fDrops"></g></svg>`;
+  }
+  const show=(id,on=1)=>{const e=$(id);if(e)e.setAttribute('opacity',on)};
+  function set(text,btn,fn){$('fMsg').innerHTML=text;const b=$('fBtn');b.hidden=!btn;if(btn){b.textContent=btn;b.onclick=fn}}
+  function stage(){
+    if(st===0)set('하유림 농부님, 네잎클로버 농장에 오신 걸 환영합니다.<br>오늘은 네잎클로버 씨앗을 심어볼 거예요.','씨앗 심기',()=>{show('fSeed');$('fSeed').classList.add('drop');st=1;later(stage,700)});
+    if(st===1){show('fSeed');show('fCan');set('씨앗을 심었어요. 이제 물을 주세요.',`물 주기 (${water}/3)`,()=>{
+      water++;$('fDrops').innerHTML=[0,1,2,3].map(i=>`<circle class="drop" cx="${206-i*6}" cy="${150+i*4}" r="3.5" fill="#6fb6ff" style="animation-delay:${i*.08}s"/>`).join('');
+      $('fCan').classList.remove('pour');void $('fCan').getBBox();$('fCan').classList.add('pour');
+      if(water===1)show('fS1');if(water===2){show('fS1',0);show('fS2')}
+      $('fBtn').textContent=`물 주기 (${water}/3)`;
+      if(water>=3){$('fBtn').hidden=true;$('fMsg').textContent='쑥쑥 자라는 중…';later(()=>{st=2;save();stage()},1400)}})}
+    if(st===2){show('fSeed',0);show('fCan',0);show('fS1',0);show('fS2',0);show('fClv');$('fClv').classList.add('pop');
+      set('어…?',null);later(()=>{set('네잎클로버가 아니라… <b style="color:#2f7a52">여울 세잎클로버</b>가 나왔다?!',null);later(talk,1800)},1200)}
+  }
+  function talk(){
+    const box=$('fTalk');box.hidden=false;const full=CLOVER_LINE.join('\n');let i=0;
+    const tick=()=>{if(!$('fTalk'))return;i++;box.querySelector('p').innerHTML=full.slice(0,i).replace(/\n/g,'<br>');if(i<full.length)typing=setTimeout(tick,55);else{st=3;save()}};
+    box.onclick=()=>{clearTimeout(typing);i=full.length-1;tick()};tick();
+  }
+  const save=()=>store.set(KEY,String(st));
+  function start(){
+    stop();st=+(store.get(KEY)||0);water=0;if(st===1)st=0;
+    $('fScene').innerHTML=scene();
+    if(st>=2){show('fClv');set('네잎클로버가 아니라… <b style="color:#2f7a52">여울 세잎클로버</b>가 나왔다?!',null);const b=$('fTalk');b.hidden=false;b.querySelector('p').innerHTML=CLOVER_LINE.join('<br>')}
+    else stage();
+    if(preview){$('fReset').hidden=false;$('fReset').onclick=()=>{store.set(KEY,'0');start()}}
+  }
+  function stop(){timers.forEach(clearTimeout);timers=[];clearTimeout(typing)}
+  return{start,stop};
+})();
+
 function openDoor(d){
   const x=DOORS.find(o=>o.d===d);
   $('sheetBody').innerHTML=`<div class="date">12월 ${d}일${x.final?' · 마지막 문':''}</div><h2>${x.title}</h2>${body(x)}`;
@@ -620,11 +695,12 @@ function openDoor(d){
   if(x.t==='song')song.start();
   if(x.t==='roulette')roulette.start();
   if(x.t==='animal')animal.start();
+  if(x.t==='farm')farm.start();
   if(x.t==='quiz')$('sheetBody').querySelectorAll('.opt').forEach(b=>b.onclick=()=>{const i=+b.dataset.i;b.classList.add(i===x.a?'right':'wrong');$('ans').textContent=i===x.a?x.right:x.wrong});
   if(x.t==='fortune')$('draw').onclick=()=>{$('fort').textContent=x.list[Math.floor(Math.random()*x.list.length)]};
   if(x.t==='list'){const k='adv-list-'+d,saved=(store.get(k)||'').split(',');$('sheetBody').querySelectorAll('input').forEach(c=>{c.checked=saved.includes(c.dataset.i);c.onchange=()=>store.set(k,[...$('sheetBody').querySelectorAll('input:checked')].map(e=>e.dataset.i).join(','))})}
 }
-function closeSheet(){song.stop();roulette.stop();animal.stop();$('sheet').classList.remove('on');$('veil').classList.remove('on');render()}
+function closeSheet(){song.stop();roulette.stop();animal.stop();farm.stop();$('sheet').classList.remove('on');$('veil').classList.remove('on');render()}
 $('x').onclick=closeSheet;$('veil').onclick=closeSheet;
 
 $('box').addEventListener('click',e=>{
